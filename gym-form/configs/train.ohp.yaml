@@ -1,0 +1,30 @@
+# ── Training config for OHP ──
+
+train:
+  batch_size: 64
+  epochs: 50
+  optimizer: adamw
+  lr: 3.0e-4
+  weight_decay: 1.0e-4
+  grad_clip: 1.0
+
+  # Per-label pos_weight for BCEWithLogitsLoss.
+  # MUST be computed from data audit (scripts/audit_data.py).
+  # Formula: pos_weight_k = num_neg_frames_k / num_pos_frames_k
+  pos_weight: [3.70, 3.28]   # ohp_elbow, ohp_knee — computed by audit_data.py
+
+  # Auxiliary exercise classification loss (disabled for single-exercise MVP)
+  aux_exercise_loss: 0.0
+
+  early_stop:
+    patience: 8
+    metric: segment_map   # monitor segment-mAP on val
+
+augmentations:
+  time_stretch: 0.2       # ±20 % temporal scaling
+  feature_jitter: 0.02    # Gaussian noise σ on features
+  time_mask_prob: 0.1     # probability of masking a random time span
+
+validation:
+  metric: segment_map
+  tiou: [0.1, 0.25, 0.5]  # temporal IoU thresholds for segment-mAP

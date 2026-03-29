@@ -1,0 +1,36 @@
+# ── Dataset config for OHP (Overhead Press) ──
+# Maps the raw Fitness-AQA dataset to the gym-form pipeline.
+
+exercise: overhead_press
+fps: 30.0
+
+# --- Paths (relative to repo root) ---
+paths:
+  # Source dataset (read-only)
+  source_labels_dir: ../Fitness-AQA_dataset_release/OHP/Labeled_Dataset/Labels
+  source_splits_dir: ../Fitness-AQA_dataset_release/OHP/Labeled_Dataset/Splits
+  source_videos_dir: ../Fitness-AQA_dataset_release/OHP/Labeled_Dataset/videos
+  # Pipeline artifacts (written by preprocessing)
+  poses_dir: data/poses/ohp
+  labels_dir: data/labels/ohp
+
+# --- Label mapping ---
+# Maps source JSON filenames → canonical label names used in the pipeline.
+label_sources:
+  ohp_elbow: error_elbows.json
+  ohp_knee: error_knees.json
+
+labels:
+  - ohp_elbow
+  - ohp_knee
+
+# --- Windowing ---
+window:
+  T: 64          # frames (~2.13 s at 30 FPS)
+  stride: 16     # frames (~0.53 s)
+
+# --- Sampling ---
+sampling:
+  pos_center: true       # center windows on positive segments
+  pos_frac: 0.5          # target fraction of positives per batch
+  hard_negatives: true   # oversample windows near error boundaries

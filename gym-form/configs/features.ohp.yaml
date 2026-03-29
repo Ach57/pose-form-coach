@@ -1,0 +1,76 @@
+# ── Feature enumeration ──
+# Canonical list of features extracted per frame.
+# This file is the single source of truth for feature ordering.
+# Update model.tcn.yaml:in_features when this list changes.
+
+exercise: overhead_press
+
+# Landmark reference:
+#   MediaPipe Pose provides 33 landmarks.
+#   Subset used: hips (23,24), knees (25,26), ankles (27,28),
+#                shoulders (11,12), elbows (13,14), wrists (15,16).
+
+features:
+  # --- Joint angles (radians) ---
+  - name: knee_angle_L
+    landmarks: [hip_L, knee_L, ankle_L]
+    type: angle
+
+  - name: knee_angle_R
+    landmarks: [hip_R, knee_R, ankle_R]
+    type: angle
+
+  - name: elbow_angle_L
+    landmarks: [shoulder_L, elbow_L, wrist_L]
+    type: angle
+
+  - name: elbow_angle_R
+    landmarks: [shoulder_R, elbow_R, wrist_R]
+    type: angle
+
+  - name: trunk_inclination
+    description: Angle between spine vector (mid-hip → mid-shoulder) and vertical axis
+    type: angle
+
+  # --- Positional (normalized to shoulder width) ---
+  - name: wrist_y_L
+    description: Left wrist Y relative to mid-hip, scaled by shoulder width
+    type: position
+
+  - name: wrist_y_R
+    description: Right wrist Y relative to mid-hip, scaled by shoulder width
+    type: position
+
+  - name: hip_center_y
+    description: Vertical position of mid-hip (posture reference)
+    type: position
+
+  # --- Velocities (first derivative, Δ per frame) ---
+  - name: d_knee_angle_L
+    type: velocity
+
+  - name: d_knee_angle_R
+    type: velocity
+
+  - name: d_elbow_angle_L
+    type: velocity
+
+  - name: d_elbow_angle_R
+    type: velocity
+
+  - name: d_trunk_inclination
+    type: velocity
+
+  - name: d_wrist_y_L
+    type: velocity
+
+  - name: d_wrist_y_R
+    type: velocity
+
+  # --- Scale reference ---
+  - name: shoulder_width
+    description: Distance between left and right shoulder (used as normalizing scale)
+    type: scale
+
+# Total: 16 features
+total_features: 16

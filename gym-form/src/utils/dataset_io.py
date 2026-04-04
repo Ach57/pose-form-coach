@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from utils.io import unzip_file
+from src.utils.io import unzip_file
 
 def prepare_dataset_archives(base_dir: Path) -> None:   
     # TODO: This needs to be generalized

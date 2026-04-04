@@ -29,6 +29,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.realtime.predictor import LABELS, OHPPredictor
+from src.utils.mediapipe_visualization import BONES, BONE_COLORS
 
 
 # ── Drawing helpers ────────────────────────────────────────────────────────────
@@ -111,6 +112,42 @@ def _draw_overlay(
     return frame
 
 
+def draw_skeleton(frame: np.ndarray, lm: np.ndarray, vis_thr: float = 0.3) -> None:
+    """Draw pose skeleton on `frame` from normalized MediaPipe landmarks `lm`.
+
+    `lm` is expected in MediaPipe format (33, 4): x,y in [0,1], z, visibility.
+    This function converts normalized coords to pixel coords and draws bones
+    and joints. It skips landmarks with visibility < `vis_thr`.
+    """
+    if lm is None or lm.size == 0:
+        return
+
+    h, w = frame.shape[:2]
+
+    # Bones
+    for region, pairs in BONES.items():
+        col_hex = BONE_COLORS.get(region, "#FFFFFF").lstrip("#")
+        # hex -> BGR tuple
+        r = int(col_hex[0:2], 16)
+        g = int(col_hex[2:4], 16)
+        b = int(col_hex[4:6], 16)
+        color = (b, g, r)
+        for i, j in pairs:
+            vi = float(lm[i, 3])
+            vj = float(lm[j, 3])
+            if vi > vis_thr and vj > vis_thr:
+                p1 = (int(lm[i, 0] * w), int(lm[i, 1] * h))
+                p2 = (int(lm[j, 0] * w), int(lm[j, 1] * h))
+                cv2.line(frame, p1, p2, color, 2, lineType=cv2.LINE_AA)
+
+    # Joints
+    for i in range(lm.shape[0]):
+        v = float(lm[i, 3])
+        if v > vis_thr:
+            pt = (int(lm[i, 0] * w), int(lm[i, 1] * h))
+            cv2.circle(frame, pt, 3, (255, 200, 0), -1, lineType=cv2.LINE_AA)
+
+
 # ── Main loop ──────────────────────────────────────────────────────────────────
 
 def run(args: argparse.Namespace) -> None:
@@ -141,6 +178,11 @@ def run(args: argparse.Namespace) -> None:
                 continue
 
             probs = predictor.predict(frame)
+            # Draw last detected landmarks onto the frame (if available)
+            if predictor._lm_buffer:
+                last_lm = predictor._lm_buffer[-1]
+                draw_skeleton(frame, last_lm, vis_thr=0.3)
+
             _draw_overlay(frame, probs, predictor.is_warm, args.threshold)
 
             cv2.imshow("OHP Form Detector", frame)

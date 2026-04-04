@@ -38,3 +38,5 @@ build/
 *.egg-info/
 
 Fitness-AQA_dataset_release/
+
+checkpoints/

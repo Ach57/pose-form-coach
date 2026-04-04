@@ -114,10 +114,14 @@ class OHPPredictor:
         device = torch.device(device)
         checkpoint_path = Path(checkpoint_path)
 
-        ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
+        ckpt = torch.load(checkpoint_path, map_location=device, weights_only=True)
 
-        # Support both Trainer-style checkpoints and bare state_dicts
-        if isinstance(ckpt, dict) and "model_cfg" in ckpt:
+        # Trainer saves: {"model_state_dict": ..., "optimizer_state_dict": ..., ...}
+        # Also support: {"model_state": ..., "model_cfg": ...} and bare state_dicts
+        if isinstance(ckpt, dict) and "model_state_dict" in ckpt:
+            model = CausalTCN()
+            model.load_state_dict(ckpt["model_state_dict"])
+        elif isinstance(ckpt, dict) and "model_cfg" in ckpt:
             cfg = ckpt["model_cfg"]
             model = CausalTCN(
                 in_features=cfg.get("in_features", 16),
@@ -127,11 +131,7 @@ class OHPPredictor:
                 dropout=cfg.get("dropout", 0.1),
                 n_labels=cfg.get("n_labels", 2),
             )
-            model.load_state_dict(ckpt["model_state"])
-        elif isinstance(ckpt, dict) and "model_state" in ckpt:
-            # Checkpoint has state dict but no cfg — use defaults
-            model = CausalTCN()
-            model.load_state_dict(ckpt["model_state"])
+            model.load_state_dict(ckpt.get("model_state", ckpt["model_cfg"]))
         else:
             # Bare state dict
             model = CausalTCN()

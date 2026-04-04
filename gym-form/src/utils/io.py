@@ -13,6 +13,9 @@ from pathlib import Path
 import numpy as np
 import yaml
 
+from pathlib import Path
+import zipfile
+
 
 def load_yaml(path: str | Path) -> dict:
     """Load a YAML config file."""
@@ -91,3 +94,25 @@ def rasterize_multilabel(
         if name in label_dict:
             labels[:, i] = rasterize_segments(label_dict[name], n_frames, fps).astype(np.float32)
     return labels
+
+
+def unzip_file(zip_path: Path, dest_dir: Path, verbose: bool = True) -> None:    
+    """
+    Unzip a zip file into a destination directory.
+
+    Args:
+        zip_path (Path): Path to the .zip file
+        dest_dir (Path): Destination directory
+    """
+
+    if not zip_path.is_file():
+        raise FileNotFoundError(f"Zip file not found: {zip_path}")
+    
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    
+    if verbose:        
+        print(f"Unzipping {zip_path.name} → {dest_dir}")
+
+    with zipfile.ZipFile(zip_path, 'r') as z:
+        z.extractall(dest_dir)
+        

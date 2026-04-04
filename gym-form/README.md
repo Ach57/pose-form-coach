@@ -1,12 +1,17 @@
 # gym-form — Real-Time Gym Form Detection
 
-## Where Are We?
+A full pipeline that detects Overhead Press (OHP) form errors in real time using MediaPipe pose estimation and a Causal Temporal Convolutional Network (Causal TCN).
 
-**Phase 0 (Data Foundation)** — COMPLETE  
-**Phase 1 (Pose + Feature Extraction)** — COMPLETE  
-**Phase 2 (Model + Training)** — NOT STARTED
+## Project Status
 
-All 2,260 OHP videos have been processed. The next step is implementing the Causal TCN model and training loop.
+| Phase | Name | Status |
+|---|---|---|
+| 0 | Data Foundation | ✅ Complete |
+| 1 | Pose + Feature Extraction | ✅ Complete |
+| 2 | Model + Training | ✅ Complete |
+| 3 | Real-Time Inference | ✅ Complete |
+
+**109 tests passing.** All 2,260 OHP videos processed and cached.
 
 ---
 
@@ -14,16 +19,55 @@ All 2,260 OHP videos have been processed. The next step is implementing the Caus
 
 ```bash
 cd gym-form
-source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
+pip install -e .
+```
 
-# Re-run extraction (already done — 2260 videos cached)
+### Train (Colab recommended for GPU)
+
+Open `notebooks/train_ohp.ipynb` in Google Colab. It handles:
+- GPU detection and setup
+- Config loading
+- Model build (`CausalTCN`)
+- Training with early stopping
+- Checkpoint export to Google Drive
+
+### Run live inference (after training)
+
+```bash
+python scripts/infer_live.py --checkpoint checkpoints/best.pt
+```
+
+Optional flags:
+
+```bash
+python scripts/infer_live.py \
+  --checkpoint checkpoints/best.pt \
+  --model-path artifacts/pose_landmarker_heavy.task \
+  --device mps \        # cpu | cuda | mps
+  --threshold 0.4 \
+  --camera 0
+```
+
+Press `q` or `Esc` to quit.
+
+### Re-run data pipeline (already cached)
+
+```bash
+# Batch pose + feature extraction (2260 videos → .npz + .npy)
 python scripts/extract_all.py --config configs/dataset.ohp.yaml
 
-# Validate splits (passed: no identity leakage)
+# Validate splits (no identity leakage)
 python scripts/validate_splits.py --config configs/dataset.ohp.yaml
 
-# Audit class balance (pos_weight already in train config)
+# Audit class balance
 python scripts/audit_data.py --config configs/dataset.ohp.yaml
+```
+
+### Run tests
+
+```bash
+pytest tests/ -v
 ```
 
 ---
@@ -32,138 +76,226 @@ python scripts/audit_data.py --config configs/dataset.ohp.yaml
 
 ```
 gym-form/
-├── configs/                    # YAML configs — single source of truth
-│   ├── dataset.ohp.yaml        #   paths, labels, splits, windowing, sampling
-│   ├── features.ohp.yaml       #   16 feature definitions (angles, velocities, scale)
-│   ├── model.tcn.yaml          #   TCN architecture (channels, kernel, dilations)
-│   ├── train.ohp.yaml          #   training hyperparams, pos_weight, augmentations
-│   └── thresholds.ohp.yaml     #   hysteresis thresholds for real-time inference
+├── configs/                         # YAML configs — single source of truth
+│   ├── dataset.ohp.yaml             #   paths, splits, windowing, sampling
+│   ├── features.ohp.yaml            #   16 feature definitions
+│   ├── model.tcn.yaml               #   TCN architecture
+│   ├── train.ohp.yaml               #   hyperparams, pos_weight, augmentations
+│   └── thresholds.ohp.yaml          #   hysteresis thresholds for inference
 │
-├── data/                       # Generated data (gitignored)
-│   ├── features/ohp/           #   2260 .npy files — (T, 16) feature matrices
-│   ├── labels/ohp/             #   2260 .json files — per-video merged labels
-│   └── poses/ohp/              #   2260 .npz files — (T, 33, 4) raw landmarks
+├── data/                            # Generated data (gitignored)
+│   ├── features/ohp/                #   2260 .npy files — (T, 16) feature matrices
+│   ├── labels/ohp/                  #   2260 .json files — per-video merged labels
+│   └── poses/ohp/                   #   2260 .npz files — (T, 33, 4) raw landmarks
 │
-├── src/                        # Python package — reusable classes
+├── src/                             # Python package
 │   ├── extract/
-│   │   └── pose_extractor.py   #   ✅ PoseExtractor (mediapipe tasks API)
+│   │   └── pose_extractor.py        #   ✅ PoseExtractor (offline + real-time)
 │   ├── features/
-│   │   └── feature_extractor.py#   ✅ OHPFeatureExtractor (16 features)
+│   │   └── feature_extractor.py     #   ✅ OHPFeatureExtractor (16 features)
 │   ├── datasets/
-│   │   └── window_dataset.py   #   ✅ WindowDataset (sliding windows + sampling)
+│   │   └── window_dataset.py        #   ✅ WindowDataset (sliding windows)
 │   ├── models/
-│   │   └── causal_tcn.py       #   ⬜ CausalTCN (stub — needs PyTorch impl)
-│   ├── train/                  #   ⬜ Training loop (not started)
-│   ├── eval/                   #   ⬜ Segment-mAP evaluation (not started)
-│   ├── realtime/               #   ⬜ Live inference pipeline (not started)
+│   │   └── causal_tcn.py            #   ✅ CausalTCN (PyTorch nn.Module)
+│   ├── train/
+│   │   └── trainer.py               #   ✅ Trainer (BCELoss, early stopping)
+│   ├── eval/
+│   │   └── metrics.py               #   ✅ segment-mAP, hysteresis_segments
+│   ├── realtime/
+│   │   └── predictor.py             #   ✅ OHPPredictor (rolling buffer + live predict)
 │   └── utils/
-│       └── io.py               #   ✅ YAML/JSON I/O, rasterize_segments/multilabel
+│       ├── io.py                     #   ✅ YAML/JSON I/O, rasterize helpers
+│       ├── mediapipe_visualization.py#   ✅ 3D skeleton + feature timeline (Plotly)
+│       ├── checkpoints.py            #   ✅ Checkpoint save/copy to Drive
+│       ├── hardware.py               #   ✅ Device detection (CPU/CUDA/MPS)
+│       └── runtime.py               #   ✅ Colab detection helpers
 │
-├── scripts/                    # Executable scripts
-│   ├── preprocess_labels.py    #   ✅ Convert per-error-type → per-video labels
-│   ├── validate_splits.py      #   ✅ Check identity leakage + coverage
-│   ├── audit_data.py           #   ✅ Compute class balance + pos_weight
-│   └── extract_all.py          #   ✅ Batch pose + feature extraction
+├── scripts/                         # Executable entry points
+│   ├── preprocess_labels.py         #   ✅ Convert Fitness-AQA → per-video JSONs
+│   ├── validate_splits.py           #   ✅ Check identity leakage + coverage
+│   ├── audit_data.py                #   ✅ Compute class balance + pos_weight
+│   ├── extract_all.py               #   ✅ Batch pose + feature extraction
+│   └── infer_live.py                #   ✅ Webcam inference with OpenCV overlay
 │
-├── artifacts/                  # Models, checkpoints, metrics
-│   ├── pose_landmarker_heavy.task   # MediaPipe model (offline, 29 MB)
-│   ├── pose_landmarker_lite.task    # MediaPipe model (real-time, 5.6 MB)
-│   ├── checkpoints/            #   ⬜ Saved model weights (empty)
-│   ├── metrics/                #   ⬜ Training/eval logs (empty)
-│   └── calibration/            #   ⬜ Threshold calibration data (empty)
+├── notebooks/
+│   └── train_ohp.ipynb              #   ✅ Colab training notebook (GPU)
 │
-├── tests/                      #   ⬜ Unit tests (not started)
-├── notebooks/                  #   ⬜ EDA / visualization (not started)
-├── deploy/                     #   ⬜ ONNX export, Docker (not started)
-└── pyproject.toml              # Dependencies + tool config
+├── tests/
+│   └── unit/                        #   ✅ 109 tests across all modules
+│
+├── artifacts/
+│   ├── pose_landmarker_heavy.task   # MediaPipe model file (29 MB, offline)
+│   └── pose_landmarker_lite.task    # MediaPipe model file (5.6 MB, real-time)
+│
+└── pyproject.toml                   # Dependencies + tool config
 ```
 
-`✅` = implemented `⬜` = stub / empty
+`✅` = implemented and tested
 
 ---
 
-## What Each File Does
+## Architecture
 
-### Configs (read these first)
+### Causal TCN
 
-| File                  | Purpose                                                                                                                                                                                       |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dataset.ohp.yaml`    | Maps the raw Fitness-AQA dataset to our pipeline. Defines source paths, label mapping (`error_elbows.json` → `ohp_elbow`), split paths, window size (T=64, stride=16), and sampling strategy. |
-| `features.ohp.yaml`   | Enumerates all 16 features by name, type (angle/position/velocity/scale), and which landmarks they use. This is the canonical feature list.                                                   |
-| `model.tcn.yaml`      | TCN architecture: 16 input features, 3 blocks of 64 channels, kernel=3, dilations=[1,2,4], 2 output labels.                                                                                   |
-| `train.ohp.yaml`      | Training: batch=64, epochs=50, AdamW lr=3e-4, **pos_weight=[3.70, 3.28]** (computed from audit), early stopping on segment-mAP, augmentation params.                                          |
-| `thresholds.ohp.yaml` | Hysteresis thresholds for real-time: ohp_elbow on=0.60/off=0.40, ohp_knee on=0.55/off=0.35.                                                                                                   |
+The model uses a Causal Temporal Convolutional Network — causal convolutions mean no future frames are ever looked at, making it suitable for real-time use.
 
-### Source Modules
+```
+Input  (B, T, 16)
+   │
+   ▼
+TemporalBlock  dilation=1   →  64 channels
+TemporalBlock  dilation=2   →  64 channels
+TemporalBlock  dilation=4   →  64 channels
+   │
+   ▼
+Conv1d head  →  (B, T, 2) logits
+   │
+   ▼
+sigmoid  →  (B, T, 2) probabilities
+```
 
-| Module                          | Class                         | Status  | What It Does                                                                                                                                                                      |
-| ------------------------------- | ----------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `extract/pose_extractor.py`     | `PoseExtractor`               | ✅ Done | Wraps MediaPipe PoseLandmarker (tasks API v0.10+). `extract_video()` for offline batch, `process_frame()` for real-time. Caches to `.npz`. Interpolates short detection gaps.     |
-| `features/feature_extractor.py` | `FeatureExtractor` (abstract) | ✅ Done | Base class: normalize landmarks (center on mid-hip, scale by shoulder width), Savitzky-Golay smoothing, `angle_between()` geometry helper, `finite_diff()` for velocities.        |
-|                                 | `OHPFeatureExtractor`         | ✅ Done | 16 features: 5 joint angles (knees, elbows, trunk), 3 positions (wrist y, hip center y), 7 velocities, 1 scale (shoulder width).                                                  |
-| `datasets/window_dataset.py`    | `WindowDataset`               | ✅ Done | Sliding windows from per-video features + labels. Positive-centered and hard-negative (boundary) windows. `get_sampler_weights()` for balanced sampling. `from_config()` factory. |
-| `models/causal_tcn.py`          | `CausalTCN`                   | ⬜ Stub | Architecture defined but no PyTorch layers yet. Will be: Input(B,T,16) → 3 TemporalBlocks → per-frame logits(B,T,2).                                                              |
-| `utils/io.py`                   | —                             | ✅ Done | `load_yaml()`, `load_json()`, `save_json()`, `rasterize_segments()` (time ranges → frame mask), `rasterize_multilabel()` (multi-label → frame matrix).                            |
+| Property | Value |
+|---|---|
+| Input features | 16 per frame |
+| Channels | [64, 64, 64] |
+| Kernel size | 3 |
+| Dilations | [1, 2, 4] |
+| Receptive field | 29 frames (~1 s at 30 fps) |
+| Parameters | ~67 K |
+| Output labels | `ohp_elbow`, `ohp_knee` |
 
-### Scripts
+### Features (16 per frame)
 
-| Script                 | What It Does                                                                                                        | Already Run? |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------- | :----------: |
-| `preprocess_labels.py` | Reads `error_elbows.json` + `error_knees.json` from Fitness-AQA → writes 2260 per-video JSONs to `data/labels/ohp/` |      ✅      |
-| `validate_splits.py`   | Checks: no duplicate IDs, no subject leakage, label coverage, no orphans. **All passed.**                           |      ✅      |
-| `audit_data.py`        | Computes class balance: ohp_elbow 25.5% positive (pw=3.70), ohp_knee 34.4% positive (pw=3.28). Per-split breakdown. |      ✅      |
-| `extract_all.py`       | Runs PoseExtractor → OHPFeatureExtractor on all videos. Writes `.npz` (poses) + `.npy` (features).                  |      ✅      |
+| # | Name | Type |
+|---|---|---|
+| 0 | `knee_angle_L` | angle (rad) |
+| 1 | `knee_angle_R` | angle (rad) |
+| 2 | `elbow_angle_L` | angle (rad) |
+| 3 | `elbow_angle_R` | angle (rad) |
+| 4 | `trunk_inclination` | angle (rad) |
+| 5 | `wrist_y_L` | position (normalized) |
+| 6 | `wrist_y_R` | position (normalized) |
+| 7 | `hip_center_y` | position (normalized) |
+| 8–14 | `d_*` | first derivative (velocity) of cols 0–6 |
+| 15 | `shoulder_width` | scale reference |
+
+Landmarks are normalized per frame: centered on mid-hip, scaled by shoulder width.
+
+---
+
+## Real-Time Inference Pipeline
+
+```
+Webcam frame  (BGR, H×W×3)
+      │
+      ▼
+PoseExtractor.process_frame()
+      │  → (33, 4)  [x, y, z, visibility]
+      ▼
+Rolling buffer  (last 29 frames)
+      │  → (29, 33, 4)
+      ▼
+OHPFeatureExtractor.extract()
+      │  → (29, 16)  float32
+      ▼
+CausalTCN  (loaded from best.pt)
+      │  → (1, 29, 2) logits  →  sigmoid  →  probs
+      ▼
+Take last frame probs  →  [p_elbow, p_knee]
+      │
+      ▼
+OpenCV overlay: probability bars + status banner
+```
+
+`OHPPredictor` (in `src/realtime/predictor.py`) encapsulates everything. The script in `scripts/infer_live.py` is a thin camera loop on top of it.
+
+---
+
+## Training
+
+| Hyperparameter | Value |
+|---|---|
+| Optimizer | AdamW |
+| Learning rate | 3e-4 |
+| Batch size | 64 |
+| Max epochs | 50 |
+| Early stopping | patience=10, monitor=segment-mAP |
+| Loss | BCEWithLogitsLoss with pos_weight |
+| Sampler | WeightedRandomSampler (balanced) |
+| Window size | 64 frames |
+| Window stride | 16 frames |
+| pos_weight (elbow) | 3.70 |
+| pos_weight (knee) | 3.28 |
 
 ---
 
 ## Key Numbers
 
-| Metric                    | Value                          |
-| ------------------------- | ------------------------------ |
-| Total videos              | 2,260                          |
-| Train / Val / Test        | 1,582 / 339 / 339              |
-| Features per frame        | 16                             |
-| Window size               | 64 frames (~2.1s at 30 FPS)    |
-| Labels                    | `ohp_elbow`, `ohp_knee`        |
-| ohp_elbow positive videos | 576 (25.5%), pos_weight = 3.70 |
-| ohp_knee positive videos  | 777 (34.4%), pos_weight = 3.28 |
-| Identity leakage          | None                           |
-| Median segment duration   | 0.62s (elbow), 0.77s (knee)    |
+| Metric | Value |
+|---|---|
+| Total videos | 2,260 |
+| Train / Val / Test | 1,582 / 339 / 339 |
+| Features per frame | 16 |
+| Labels | `ohp_elbow`, `ohp_knee` |
+| ohp_elbow positive | 576 videos (25.5%) |
+| ohp_knee positive | 777 videos (34.4%) |
+| Identity leakage | None |
+| Median segment duration | 0.62 s (elbow), 0.77 s (knee) |
+| Unit tests | 109 passing |
 
 ---
 
-## Pipeline Overview
+## Source Module Reference
 
-```
-Video (.mp4)
-    │
-    ▼
-PoseExtractor (MediaPipe PoseLandmarker)
-    │  → landmarks (T, 33, 4) cached as .npz
-    ▼
-OHPFeatureExtractor (angles, velocities, normalization)
-    │  → features (T, 16) cached as .npy
-    ▼
-WindowDataset (sliding windows T=64, stride=16)
-    │  → (B, T=64, F=16) features + (B, T=64, L=2) labels
-    ▼
-CausalTCN  ⬜ NOT YET
-    │  → per-frame logits (B, T, 2)
-    ▼
-BCEWithLogitsLoss + pos_weight  ⬜ NOT YET
-    │
-    ▼
-Hysteresis Post-Processing  ⬜ NOT YET
-    │  → stable error segment predictions
-    ▼
-Segment-mAP Evaluation  ⬜ NOT YET
-```
+### `src/extract/pose_extractor.py` — `PoseExtractor`
 
----
+Wraps the MediaPipe PoseLandmarker (tasks API v0.10+).
 
-## What's Next (Phase 2)
+| Method | Description |
+|---|---|
+| `extract_video(path)` | Offline — processes every frame, returns `PoseResult` with `(T, 33, 4)` landmarks. Interpolates short detection gaps (≤3 frames). |
+| `open()` | Opens a persistent IMAGE-mode session for real-time use. |
+| `process_frame(frame)` | Single BGR frame → `(33, 4)` or `None` if detection fails. |
+| `close()` | Closes the MediaPipe session. |
 
-1. **Implement CausalTCN** — PyTorch `nn.Module` with causal convolutions
-2. **Training loop** — BCEWithLogitsLoss, WeightedRandomSampler, early stopping
-3. **Segment-mAP evaluation** — temporal IoU at [0.1, 0.25, 0.5]
-4. **Hysteresis post-processing** — smooth raw sigmoid outputs into stable segments
+### `src/features/feature_extractor.py` — `OHPFeatureExtractor`
+
+| Method | Description |
+|---|---|
+| `extract(landmarks)` | `(T, 33, 4)` → `(T, 16)` float32. Normalizes, smooths (Savitzky-Golay), computes angles, velocities, and scale. |
+| `feature_names` | Ordered list of 16 feature name strings. |
+
+### `src/models/causal_tcn.py` — `CausalTCN`
+
+| Method | Description |
+|---|---|
+| `forward(x)` | `(B, T, F)` → `(B, T, L)` logits (pre-sigmoid). |
+| `receptive_field` | Total frames the model can see (29 with default config). |
+| `from_config(cfg)` | Factory: builds model from a config dict. |
+
+### `src/train/trainer.py` — `Trainer`
+
+| Method | Description |
+|---|---|
+| `fit(train_loader, val_loader)` | Full training loop with early stopping. Saves `best.pt` and `last.pt`. |
+| `evaluate(loader)` | Returns segment-mAP on val/test split. |
+| `load_checkpoint(path)` | Restores model + optimizer state. |
+
+### `src/eval/metrics.py`
+
+| Function | Description |
+|---|---|
+| `hysteresis_segments(probs, on, off)` | Converts frame-level probabilities to stable segments using a two-threshold hysteresis. |
+| `segment_ap(pred_segs, gt_segs, iou_thresh)` | Average precision for a single label at a given IoU threshold. |
+| `segment_map(pred_segs, gt_segs, iou_thresholds)` | Mean AP across IoU thresholds [0.1, 0.25, 0.5]. |
+
+### `src/realtime/predictor.py` — `OHPPredictor`
+
+| Method | Description |
+|---|---|
+| `from_checkpoint(path, ...)` | Factory: loads `best.pt`/`last.pt`, builds model, returns ready-to-use predictor. |
+| `open()` / `close()` | Start/stop MediaPipe session. Supports `with` statement. |
+| `predict(frame)` | BGR frame → `np.ndarray (2,)` probs or `None` during warm-up. |
+| `label_errors(probs)` | Returns list of active error label strings above threshold. |
+| `is_warm` | `True` once the 29-frame rolling buffer has filled. |

@@ -94,35 +94,19 @@ def load_T_frames(dataset_cfg: dict, sample_video: str) -> tuple[np.ndarray, int
     return landmarks, T_frames
 
 
-# Visibility threshold below which a landmark position is not trusted
-VIS_THRESHOLD = 0.3
-
-
-def make_frame_traces(lm_frame: np.ndarray, vis_threshold: float = VIS_THRESHOLD) -> list:
+def make_frame_traces(lm_frame: np.ndarray | None):
     """
-        Create Plotly 3D traces for a single pose frame.
+    Create Plotly 3D traces for a single pose frame.
 
-        MediaPipe image coordinates have y=0 at the top of the frame and y=1 at
-        the bottom.  To display the skeleton right-side up in a 3D plot (where
-        positive y is up), y is negated before plotting.
+    Args:
+        lm_frame (np.ndarray | None):
+            Pose landmarks for one frame with shape (33, 4).
+            May be None or empty if landmarks are missing.
 
-        Bone segments whose endpoints have visibility below `vis_threshold` are
-        skipped (replaced with None gaps) so that occluded / off-screen landmarks
-        do not draw phantom lines across the figure.
-
-        Args:
-            lm_frame (np.ndarray | None):
-                Pose landmarks for one frame with shape (33, 4) — (x, y, z, vis).
-                May be None or empty if landmarks are missing.
-            vis_threshold (float):
-                Minimum visibility score [0, 1] required to draw a bone endpoint.
-                Defaults to VIS_THRESHOLD (module-level constant).
-
-        Returns:
-            list:
-                List of Plotly Scatter3d traces. Empty if frame is invalid.
+    Returns:
+        list:
+            List of Plotly Scatter3d traces. Empty if frame is invalid.
     """
-
     # Handle missing or empty frames gracefully
     if lm_frame is None:
         return []
@@ -138,35 +122,38 @@ def make_frame_traces(lm_frame: np.ndarray, vis_threshold: float = VIS_THRESHOLD
             f"Invalid lm_frame shape {lm_frame.shape}, expected (N, >=3)"
         )
 
-    x = lm_frame[:, 0]
-    y = -lm_frame[:, 1]   # flip: MediaPipe y↓ → plot y↑
-    z = lm_frame[:, 2]
-    vis = lm_frame[:, 3] if lm_frame.shape[1] >= 4 else np.ones(len(x))
-
+    x, y, z = lm_frame[:, 0], lm_frame[:, 1], lm_frame[:, 2]
     traces = []
 
-    # Joints — only render trusted landmarks
-    trusted = vis >= vis_threshold
-    traces.append(go.Scatter3d(
-        x=x[trusted], y=y[trusted], z=z[trusted], mode="markers",
-        marker=dict(size=3, color="#19D3F3"),
-        name="joints", showlegend=False,
-    ))
+    # Joints
+    traces.append(
+        go.Scatter3d(
+            x=x, y=y, z=z,
+            mode="markers",
+            marker=dict(size=3, color="#19D3F3"),
+            name="joints",
+            showlegend=False,
+        )
+    )
 
-    # Bones by region — skip segments where either endpoint is occluded
+    # Bones by region
     for region, pairs in BONES.items():
         bx, by, bz = [], [], []
         for i, j in pairs:
-            if vis[i] >= vis_threshold and vis[j] >= vis_threshold:
-                bx += [x[i], x[j], None]
-                by += [y[i], y[j], None]
-                bz += [z[i], z[j], None]
-        if bx:  # skip trace entirely if all bones in this region were occluded
-            traces.append(go.Scatter3d(
-                x=bx, y=by, z=bz, mode="lines",
+            bx += [x[i], x[j], None]
+            by += [y[i], y[j], None]
+            bz += [z[i], z[j], None]
+
+        traces.append(
+            go.Scatter3d(
+                x=bx, y=by, z=bz,
+                mode="lines",
                 line=dict(color=BONE_COLORS[region], width=4),
-                name=region, showlegend=False,
-            ))
+                name=region,
+                showlegend=False,
+            )
+        )
+
     return traces
 
 def build_frames_for_slider(dataset_cfg: dict, sample_video: str) -> None:    
@@ -191,16 +178,10 @@ def build_frames_for_slider(dataset_cfg: dict, sample_video: str) -> None:
 
     # Initial frame
     init_traces = make_frame_traces(landmarks[0])
-    # Axis range — use only trusted landmarks to avoid occluded outliers skewing the view
-    # Also apply y-flip here so the axis range matches the rendered coordinates
-    vis_all = landmarks[:, :, 3]
-    trusted_mask = vis_all >= VIS_THRESHOLD  # (T, 33) bool
     pad = 0.1
 
     def axis_range(dim: int) -> list[float]:
-        vals = landmarks[:, :, dim][trusted_mask]
-        if dim == 1:        # y is negated in make_frame_traces
-            vals = -vals
+        vals = landmarks[:, :, dim].flatten()
         return [float(vals.min()) - pad, float(vals.max()) + pad]
 
     axis_cfg = lambda dim: dict(

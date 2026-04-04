@@ -13,7 +13,6 @@ from src.utils.mediapipe_visualization import (
     BONE_COLORS,
     FEATURE_NAMES,
     KEY_FEATURES,
-    VIS_THRESHOLD,
     load_T_frames,
     make_frame_traces,
     build_frames_for_slider,
@@ -123,9 +122,7 @@ class TestLoadTFrames:
 class TestMakeFrameTraces:
 
     def test_returns_traces_for_valid_frame(self):
-        # All landmarks fully visible — expect joints + all bone regions
-        lm = np.ones((33, 4), dtype=np.float32) * 0.5
-        lm[:, 3] = 1.0  # all visibility = 1
+        lm = np.random.rand(33, 4).astype(np.float32)
         traces = make_frame_traces(lm)
         assert len(traces) == 1 + len(BONES)
 
@@ -143,52 +140,18 @@ class TestMakeFrameTraces:
         with pytest.raises(ValueError, match="Invalid lm_frame shape"):
             make_frame_traces(np.zeros((33,)))
 
-    def test_y_is_flipped(self):
-        """y coordinate must be negated so skeleton stands right-side up."""
-        lm = np.zeros((33, 4), dtype=np.float32)
-        lm[:, 1] = 0.5    # raw y = 0.5 for all landmarks
-        lm[:, 3] = 1.0    # full visibility
+    def test_joint_trace_has_33_points(self):
+        lm = np.random.rand(33, 4).astype(np.float32)
         traces = make_frame_traces(lm)
         joint_trace = traces[0]
-        assert all(v == pytest.approx(-0.5) for v in joint_trace.y)
+        assert len(joint_trace.x) == 33
 
-    def test_occluded_joints_excluded_from_joint_trace(self):
-        """Landmarks below vis_threshold must not appear in the joint scatter."""
-        lm = np.ones((33, 4), dtype=np.float32) * 0.5
-        lm[:, 3] = 1.0          # all visible
-        lm[13, 3] = 0.0         # occlude landmark 13 (left elbow)
-        lm[15, 3] = 0.0         # occlude landmark 15 (left wrist)
-        traces = make_frame_traces(lm)
-        joint_trace = traces[0]
-        assert len(joint_trace.x) == 31   # 33 - 2 occluded
-
-    def test_occluded_bone_not_drawn(self):
-        """A bone whose endpoint is occluded must not create a line trace."""
-        lm = np.ones((33, 4), dtype=np.float32) * 0.5
-        lm[:, 3] = 1.0
-        # Occlude both endpoints of the left_arm bones (11→13 and 13→15)
-        lm[13, 3] = 0.0   # left elbow occluded
-        traces = make_frame_traces(lm)
-        trace_names = {t.name for t in traces}
-        # left_arm has bones (11,13) and (13,15) — both share the occluded lm13
-        assert "left_arm" not in trace_names
-
-    def test_all_bone_regions_present_when_fully_visible(self):
-        lm = np.ones((33, 4), dtype=np.float32) * 0.5
-        lm[:, 3] = 1.0
+    def test_all_bone_regions_present(self):
+        lm = np.random.rand(33, 4).astype(np.float32)
         traces = make_frame_traces(lm)
         trace_names = {t.name for t in traces}
         for region in BONES:
             assert region in trace_names
-
-    def test_custom_vis_threshold(self):
-        """A custom threshold of 0.0 should include all landmarks."""
-        lm = np.ones((33, 4), dtype=np.float32) * 0.5
-        lm[:, 3] = 0.01   # very low but > 0
-        traces_strict = make_frame_traces(lm)                   # default threshold
-        traces_loose  = make_frame_traces(lm, vis_threshold=0.0)
-        # With threshold=0 all bones are drawn; strict should draw fewer
-        assert len(traces_loose) >= len(traces_strict)
 
 
 # ── Tests: build_frames_for_slider ───────────────────────────────────
@@ -276,7 +239,3 @@ class TestConstants:
 
     def test_key_features_within_bounds(self):
         assert all(0 <= fi < 16 for fi in KEY_FEATURES)
-
-    def test_vis_threshold_is_float_in_range(self):
-        assert isinstance(VIS_THRESHOLD, float)
-        assert 0.0 <= VIS_THRESHOLD <= 1.0

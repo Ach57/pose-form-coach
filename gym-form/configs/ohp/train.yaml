@@ -1,0 +1,8 @@
+# ── OHP training overrides (merged on top of configs/shared/train.base.yaml) ──
+# Only pos_weight differs from the shared base.
+
+train:
+  # Per-label pos_weight for BCEWithLogitsLoss.
+  # Computed by: python scripts/audit_data.py --config configs/ohp/dataset.yaml
+  # Formula: pos_weight_k = total_negative_time_k / total_positive_time_k
+  pos_weight: [3.70, 3.28] # ohp_elbow, ohp_knee

@@ -1,0 +1,36 @@
+# ── Dataset config for Squat ──
+# Maps the raw Fitness-AQA dataset to the gym-form pipeline.
+
+exercise: Squat
+fps: 30.0
+
+# --- Paths (relative to repo root) ---
+paths:
+  # Source dataset (read-only)
+  source_labels_dir: ../Fitness-AQA_dataset_release/Squat/Labeled_Dataset/Labels
+  source_splits_dir: ../Fitness-AQA_dataset_release/Squat/Labeled_Dataset/Splits
+  source_videos_dir: ../Fitness-AQA_dataset_release/Squat/Labeled_Dataset/videos
+  # Pipeline artifacts (written by preprocessing)
+  poses_dir: data/poses/squat
+  features_dir: data/features/squat
+  labels_dir: data/labels/squat
+
+# --- Label mapping ---
+label_sources:
+  error_knees_forward: error_knees_forward.json
+  error_knees_inward: error_knees_inward.json
+
+labels:
+  - error_knees_forward
+  - error_knees_inward
+
+# --- Windowing ---
+window:
+  T: 64 # frames (~2.13 s at 30 FPS)
+  stride: 16 # frames (~0.53 s)
+
+# --- Sampling ---
+sampling:
+  pos_center: true
+  pos_frac: 0.5
+  hard_negatives: true

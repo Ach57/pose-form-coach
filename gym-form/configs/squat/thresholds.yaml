@@ -1,0 +1,16 @@
+# ── Per-label inference thresholds for Squat ──
+# Calibrated on the validation set (scripts/calibrate_thresholds.py).
+# Values below are sensible defaults; replace after calibration.
+
+thresholds:
+  error_knees_forward:
+    on: 0.60
+    off: 0.40
+    min_dur_ms: 100
+    bridge_gap_ms: 150
+
+  error_knees_inward:
+    on: 0.55
+    off: 0.35
+    min_dur_ms: 100
+    bridge_gap_ms: 150

@@ -1,0 +1,5 @@
+# ── Squat model overrides (merged on top of configs/shared/model.tcn.base.yaml) ──
+
+model:
+  in_features: 20 # 10 static + 9 velocities + 1 scale (see configs/squat/features.yaml)
+  n_labels: 2 # error_knees_forward, error_knees_inward

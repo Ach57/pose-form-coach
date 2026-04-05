@@ -12,7 +12,8 @@ Target format (one JSON per video, all labels merged):
     data/labels/ohp/72676_1.json  →  {"ohp_elbow": [[2.01, 2.95], [4.45, 5.1]], "ohp_knee": []}
 
 Usage:
-    python scripts/preprocess_labels.py --config configs/dataset.ohp.yaml
+    python scripts/preprocess_labels.py --config configs/ohp/dataset.yaml
+    python scripts/preprocess_labels.py --config configs/squat/dataset.yaml
 """
 
 from __future__ import annotations
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/dataset.ohp.yaml",
+        default="configs/ohp/dataset.yaml",
         help="Path to dataset config YAML (relative to repo root)",
     )
     args = parser.parse_args()

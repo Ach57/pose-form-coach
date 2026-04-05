@@ -23,6 +23,67 @@ def load_yaml(path: str | Path) -> dict:
         return yaml.safe_load(f)
 
 
+def merge_configs(*configs: dict) -> dict:
+    """Deep-merge a sequence of dicts, later values overriding earlier ones.
+
+    Only dict values are merged recursively; all other types are replaced.
+
+    Example
+    -------
+    >>> base  = {"model": {"channels": [64,64], "dropout": 0.1}}
+    >>> override = {"model": {"dropout": 0.2, "in_features": 16}}
+    >>> merge_configs(base, override)
+    {"model": {"channels": [64,64], "dropout": 0.2, "in_features": 16}}
+    """
+    result: dict = {}
+    for cfg in configs:
+        for key, val in cfg.items():
+            if key in result and isinstance(result[key], dict) and isinstance(val, dict):
+                result[key] = merge_configs(result[key], val)
+            else:
+                result[key] = val
+    return result
+
+
+def load_config(
+    *paths: str | Path,
+    base_dir: str | Path | None = None,
+) -> dict:
+    """Load and deep-merge one or more YAML config files.
+
+    Files are merged left-to-right so later files override earlier ones.
+    Typical use:
+
+        # Exercise-specific — shared base merged with per-exercise overrides
+        cfg = load_config(
+            "configs/shared/model.tcn.base.yaml",
+            "configs/ohp/model.yaml",
+        )
+
+        # Dataset only (no base needed)
+        cfg = load_config("configs/ohp/dataset.yaml")
+
+    Parameters
+    ----------
+    *paths : str | Path
+        One or more YAML file paths. Resolved relative to `base_dir` if given.
+    base_dir : str | Path | None
+        Optional base directory for relative paths. Defaults to cwd.
+
+    Returns
+    -------
+    dict
+        Deep-merged configuration dictionary.
+    """
+    merged: dict = {}
+    for p in paths:
+        p = Path(p)
+        if base_dir is not None and not p.is_absolute():
+            p = Path(base_dir) / p
+        merged = merge_configs(merged, load_yaml(p))
+    return merged
+
+
 def load_json(path: str | Path) -> dict | list:
     """Load a JSON file."""
     with open(path) as f:

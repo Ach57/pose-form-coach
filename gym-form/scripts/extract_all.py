@@ -2,11 +2,18 @@
 """
 Extract poses + features for all videos in a split.
 
-Runs PoseExtractor → OHPFeatureExtractor for each video, caching intermediate
-.npz (poses) and .npy (features) files.  Skips videos already processed.
+Runs PoseExtractor → <ExerciseFeatureExtractor> for each video,
+caching intermediate .npz (poses) and .npy (features) files.
+Skips videos already processed.
+
+The extractor is chosen automatically from the `exercise:` field in the
+dataset config:
+  overhead_press  →  OHPFeatureExtractor
+  Squat           →  SquatFeatureExtractor
 
 Usage:
-    python scripts/extract_all.py --config configs/dataset.ohp.yaml [--splits train val test]
+    python scripts/extract_all.py --config configs/ohp/dataset.yaml
+    python scripts/extract_all.py --config configs/squat/dataset.yaml
 """
 
 from __future__ import annotations
@@ -20,20 +27,38 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.extract.pose_extractor import PoseExtractor
-from src.features.feature_extractor import OHPFeatureExtractor
+from src.features.feature_extractor import OHPFeatureExtractor, SquatFeatureExtractor
 from src.utils.io import load_json, load_yaml
+
+# Map config exercise name → feature extractor class
+_EXTRACTORS = {
+    "overhead_press": OHPFeatureExtractor,
+    "ohp":            OHPFeatureExtractor,
+    "squat":          SquatFeatureExtractor,
+    "Squat":          SquatFeatureExtractor,
+}
 
 
 def extract_all(config_path: str | Path, splits: list[str]) -> None:
     config = load_yaml(config_path)
+    exercise = config.get("exercise", "overhead_press")
     videos_dir = REPO_ROOT / config["paths"]["source_videos_dir"]
     poses_dir = REPO_ROOT / config["paths"]["poses_dir"]
-    features_dir = REPO_ROOT / "data" / "features" / "ohp"
+    features_dir = REPO_ROOT / config["paths"]["features_dir"]
     splits_dir = REPO_ROOT / config["paths"]["source_splits_dir"]
     fps = config["fps"]
 
     poses_dir.mkdir(parents=True, exist_ok=True)
     features_dir.mkdir(parents=True, exist_ok=True)
+
+    extractor_cls = _EXTRACTORS.get(exercise)
+    if extractor_cls is None:
+        raise ValueError(
+            f"Unknown exercise '{exercise}' in config. "
+            f"Supported: {list(_EXTRACTORS.keys())}"
+        )
+    print(f"Exercise   : {exercise}")
+    print(f"Extractor  : {extractor_cls.__name__}")
 
     # Collect all video IDs from requested splits
     video_ids: list[str] = []
@@ -68,7 +93,7 @@ def extract_all(config_path: str | Path, splits: list[str]) -> None:
     pose_extractor = PoseExtractor(
         model_path="artifacts/pose_landmarker_heavy.task",
     )
-    feat_extractor = OHPFeatureExtractor(fps=fps, smooth_window=5)
+    feat_extractor = extractor_cls(fps=fps, smooth_window=5)
 
     done = 0
     skipped_cache = 0
@@ -134,7 +159,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/dataset.ohp.yaml",
+        required=True,
+        help="Path to dataset config YAML (e.g. configs/dataset.ohp.yaml)",
     )
     parser.add_argument(
         "--splits",

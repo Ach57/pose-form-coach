@@ -79,7 +79,10 @@ class TestCausalTCN:
             assert out.shape == (1, T, 2)
 
     def test_from_config(self):
-        model = CausalTCN.from_config("configs/model.tcn.yaml")
+        model = CausalTCN.from_config(
+            "configs/shared/model.tcn.base.yaml",
+            "configs/ohp/model.yaml",
+        )
         assert model.in_features == 16
         assert model.n_labels == 2
 

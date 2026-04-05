@@ -27,11 +27,11 @@ labels:
 
 # --- Windowing ---
 window:
-  T: 64          # frames (~2.13 s at 30 FPS)
-  stride: 16     # frames (~0.53 s)
+  T: 64 # frames (~2.13 s at 30 FPS)
+  stride: 16 # frames (~0.53 s)
 
 # --- Sampling ---
 sampling:
-  pos_center: true       # center windows on positive segments
-  pos_frac: 0.5          # target fraction of positives per batch
-  hard_negatives: true   # oversample windows near error boundaries
+  pos_center: true # center windows on positive segments
+  pos_frac: 0.5 # target fraction of positives per batch
+  hard_negatives: true # oversample windows near error boundaries

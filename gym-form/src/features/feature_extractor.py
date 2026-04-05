@@ -289,3 +289,140 @@ class OHPFeatureExtractor(FeatureExtractor):
             axis=1,
         )  # (T, 8)
         return features
+
+
+class SquatFeatureExtractor(FeatureExtractor):
+    """Feature extractor for Squat.
+
+    Detects two error types:
+      - error_knees_forward : knees travel too far forward past the toes
+      - error_knees_inward  : knees cave inward (valgus collapse)
+
+    Produces 18 features per frame:
+      10 static + 8 velocities
+
+    Static features (columns 0-9):
+      0: knee_angle_L          — ∠(hip_L, knee_L, ankle_L)
+      1: knee_angle_R          — ∠(hip_R, knee_R, ankle_R)
+      2: hip_angle_L           — ∠(shoulder_L, hip_L, knee_L) — squat depth
+      3: hip_angle_R           — ∠(shoulder_R, hip_R, knee_R)
+      4: trunk_inclination     — angle between spine and vertical
+      5: knee_x_L              — lateral knee position (normalized)
+      6: knee_x_R              — lateral knee position (normalized)
+      7: ankle_x_L             — lateral ankle position (normalized)
+      8: ankle_x_R             — lateral ankle position (normalized)
+      9: hip_center_y          — vertical hip position (squat depth proxy)
+
+    Velocities (columns 10-17): d/dt of columns 0-7 (angles + lateral positions).
+    Column 9 (hip_center_y) is excluded from velocities.
+    Shoulder width appended as column 18 (scale reference).
+
+    Total: 10 static + 8 velocities + 1 scale = 19 features.
+    """
+
+    _STATIC_NAMES = [
+        "knee_angle_L",
+        "knee_angle_R",
+        "hip_angle_L",
+        "hip_angle_R",
+        "trunk_inclination",
+        "knee_x_L",
+        "knee_x_R",
+        "ankle_x_L",
+        "ankle_x_R",
+        "hip_center_y",
+    ]
+
+    # Columns 0-8 get velocity derivatives; hip_center_y (9) excluded
+    _VEL_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+
+    @property
+    def feature_names(self) -> list[str]:
+        return [
+            "knee_angle_L",
+            "knee_angle_R",
+            "hip_angle_L",
+            "hip_angle_R",
+            "trunk_inclination",
+            "knee_x_L",
+            "knee_x_R",
+            "ankle_x_L",
+            "ankle_x_R",
+            "hip_center_y",
+            "d_knee_angle_L",
+            "d_knee_angle_R",
+            "d_hip_angle_L",
+            "d_hip_angle_R",
+            "d_trunk_inclination",
+            "d_knee_x_L",
+            "d_knee_x_R",
+            "d_ankle_x_L",
+            "d_ankle_x_R",
+            "shoulder_width",
+        ]  # 20 features total
+
+    def _velocity_column_indices(self) -> list[int]:
+        return self._VEL_INDICES
+
+    def _compute_frame_features(self, norm_landmarks: np.ndarray) -> np.ndarray:
+        """Compute squat-specific joint angles and lateral positions.
+
+        Parameters
+        ----------
+        norm_landmarks : (T, 33, 4) — already normalized (centered on mid-hip,
+            scaled by shoulder width)
+
+        Returns
+        -------
+        features : (T, 10)
+        """
+        xyz = norm_landmarks[..., :3]  # (T, 33, 3)
+
+        def lm(name: str) -> np.ndarray:
+            return xyz[:, LANDMARK[name]]  # (T, 3)
+
+        # ── Joint angles ──────────────────────────────────────────────────────
+        knee_angle_L = self.angle_between(lm("hip_L"), lm("knee_L"), lm("ankle_L"))
+        knee_angle_R = self.angle_between(lm("hip_R"), lm("knee_R"), lm("ankle_R"))
+
+        # Hip (pelvis) angle reflects squat depth
+        hip_angle_L = self.angle_between(lm("shoulder_L"), lm("hip_L"), lm("knee_L"))
+        hip_angle_R = self.angle_between(lm("shoulder_R"), lm("hip_R"), lm("knee_R"))
+
+        # Trunk inclination: spine vs vertical
+        mid_hip = (lm("hip_L") + lm("hip_R")) / 2.0
+        mid_shoulder = (lm("shoulder_L") + lm("shoulder_R")) / 2.0
+        spine = mid_shoulder - mid_hip
+        vertical = np.zeros_like(spine)
+        vertical[:, 1] = -1.0  # MediaPipe y↓, so up = -y
+        cos_trunk = np.sum(spine * vertical, axis=-1) / (
+            np.linalg.norm(spine, axis=-1) + 1e-8
+        )
+        trunk_inclination = np.arccos(np.clip(cos_trunk, -1.0, 1.0))
+
+        # ── Lateral positions (x-axis) — key for knees-forward & valgus ──────
+        # x is normalized by shoulder width; positive = right in image space
+        knee_x_L  = lm("knee_L")[:, 0]
+        knee_x_R  = lm("knee_R")[:, 0]
+        ankle_x_L = lm("ankle_L")[:, 0]
+        ankle_x_R = lm("ankle_R")[:, 0]
+
+        # Vertical hip depth (proxy for squat depth)
+        hip_center_y = mid_hip[:, 1]
+
+        features = np.stack(
+            [
+                knee_angle_L,
+                knee_angle_R,
+                hip_angle_L,
+                hip_angle_R,
+                trunk_inclination,
+                knee_x_L,
+                knee_x_R,
+                ankle_x_L,
+                ankle_x_R,
+                hip_center_y,
+            ],
+            axis=1,
+        )  # (T, 10)
+        return features

@@ -20,7 +20,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.utils.io import load_yaml
+from src.utils.io import load_config, load_yaml
 
 
 class CausalConv1d(nn.Module):
@@ -169,9 +169,23 @@ class CausalTCN(nn.Module):
         return rf
 
     @classmethod
-    def from_config(cls, config_path: str) -> "CausalTCN":
-        """Build a CausalTCN from a YAML config file."""
-        cfg = load_yaml(config_path)["model"]
+    def from_config(cls, *config_paths: str) -> "CausalTCN":
+        """Build a CausalTCN from one or more YAML config files.
+
+        Files are deep-merged left-to-right, so later files override earlier ones.
+        This supports both the legacy single-file pattern and the new
+        base + exercise-override pattern::
+
+            # Legacy (single file)
+            CausalTCN.from_config("configs/ohp/model.yaml")
+
+            # New (shared base + exercise override)
+            CausalTCN.from_config(
+                "configs/shared/model.tcn.base.yaml",
+                "configs/ohp/model.yaml",
+            )
+        """
+        cfg = load_config(*config_paths)["model"]
         return cls(
             in_features=cfg["in_features"],
             channels=cfg["channels"],

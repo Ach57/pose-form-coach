@@ -9,7 +9,8 @@ Outputs:
   - Per-split breakdowns.
 
 Usage:
-    python scripts/audit_data.py --config configs/dataset.ohp.yaml
+    python scripts/audit_data.py --config configs/ohp/dataset.yaml
+    python scripts/audit_data.py --config configs/squat/dataset.yaml
 """
 
 from __future__ import annotations
@@ -133,7 +134,7 @@ def audit_data(config_path: str | Path) -> dict:
 
     print(f"\n{'=' * 60}")
     print(f"pos_weight list for train config: {pos_weights}")
-    print(f"Copy this into configs/train.ohp.yaml → train.pos_weight")
+    print(f"Copy this into configs/<exercise>/train.yaml → train.pos_weight")
     print(f"{'=' * 60}")
 
     # ── Per-split breakdown ──────────────────────────────────────────
@@ -179,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/dataset.ohp.yaml",
+        default="configs/ohp/dataset.yaml",
         help="Path to dataset config YAML",
     )
     args = parser.parse_args()

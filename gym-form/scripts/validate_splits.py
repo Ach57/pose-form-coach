@@ -10,7 +10,8 @@ Checks:
   4. Every label file maps to a split (no orphaned labels).
 
 Usage:
-    python scripts/validate_splits.py --config configs/dataset.ohp.yaml
+    python scripts/validate_splits.py --config configs/ohp/dataset.yaml
+    python scripts/validate_splits.py --config configs/squat/dataset.yaml
 """
 
 from __future__ import annotations
@@ -118,7 +119,7 @@ def validate_splits(config_path: str | Path) -> bool:
     # ── Summary ──────────────────────────────────────────────────────
     print(f"\n{'=' * 50}")
     if ok:
-        print("ALL CHECKS PASSED ✓")
+        print("ALL CHECKS PASSED")
     else:
         print("SOME CHECKS FAILED — see details above.")
     return ok
@@ -129,7 +130,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/dataset.ohp.yaml",
+        default="configs/ohp/dataset.yaml",
         help="Path to dataset config YAML",
     )
     args = parser.parse_args()

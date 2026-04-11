@@ -25,6 +25,7 @@ Usage
 
 from __future__ import annotations
 
+import queue
 import re
 import sys
 import threading
@@ -66,6 +67,9 @@ class Edith:
         )
         self._listening_for_command = False
         self._shutdown_event = threading.Event()
+        # Speech queue: background threads enqueue text; main thread plays it.
+        # Each item is (text, done_event) so callers can wait for completion.
+        self._speech_queue: queue.Queue[tuple[str, threading.Event]] = queue.Queue()
 
     # ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -74,22 +78,29 @@ class Edith:
         import cv2
 
         exercises = ", ".join(known_exercises())
+        # First speak is on main thread directly — safe
         speak(f"Edith is online. Say my name to give a command. Available exercises: {exercises}.")
         self._detector.start()
         try:
             while not self._shutdown_event.is_set():
-                # cv2.imshow MUST run on the main thread (macOS AppKit requirement).
-                # The pipeline pushes annotated frames via a queue; we display them here.
+                # ── Drain speech queue (main-thread TTS) ──
+                try:
+                    text, done = self._speech_queue.get_nowait()
+                    speak(text)
+                    done.set()
+                except queue.Empty:
+                    pass
+
+                # ── Display frames (main-thread imshow) ──
                 frame = self._pipeline.get_frame()
                 if frame is not None:
                     cv2.imshow(self._pipeline.window_title, frame)
                     key = cv2.waitKey(1) & 0xFF
-                    if key in (ord("q"), 27):   # q or Esc closes the window
+                    if key in (ord("q"), 27):
                         self._pipeline.stop()
                         cv2.destroyAllWindows()
                 else:
-                    # No active pipeline — yield so the voice thread stays responsive
-                    time.sleep(0.02)
+                    time.sleep(0.01)
         except KeyboardInterrupt:
             pass
         finally:
@@ -104,9 +115,15 @@ class Edith:
         import cv2
         self._pipeline.stop()
         cv2.destroyAllWindows()
-        speak("Shutting down. Good workout.")
+        speak("Shutting down.")
         self._detector.stop()
         sys.exit(0)
+
+    def _say(self, text: str) -> None:
+        """Speak *text* from any thread, always executing on the main thread."""
+        done = threading.Event()
+        self._speech_queue.put((text, done))
+        done.wait()  # block the caller until main thread finishes speaking
 
     # ── Wake word callback ─────────────────────────────────────────────────────
 
@@ -116,12 +133,12 @@ class Edith:
             return
         self._listening_for_command = True
         try:
-            speak("Yes?")
+            self._say("Yes?")
             command = listen_once()
             if command:
                 self._handle(command)
             else:
-                speak("I didn't catch that.")
+                self._say("I didn't catch that.")
         finally:
             self._listening_for_command = False
 
@@ -136,9 +153,9 @@ class Edith:
             if ex:
                 entry = resolve(ex)
                 name = entry.display_name if entry else ex
-                speak(f"Currently analysing {name}.")
+                self._say(f"Currently analysing {name}.")
             else:
-                speak("No exercise is running.")
+                self._say("No exercise is running.")
             return
 
         # ── Stop command ──
@@ -148,9 +165,9 @@ class Edith:
                 entry = resolve(ex) if ex else None
                 name = entry.display_name if entry else ex
                 self._pipeline.stop()
-                speak(f"Stopped {name}. Great work.")
+                self._say(f"Stopped {name}. Great work.")
             else:
-                speak("Nothing is running.")
+                self._say("Nothing is running.")
             return
 
         # ── Start / switch command ──
@@ -161,28 +178,28 @@ class Edith:
             if self._pipeline.is_running:
                 current_entry = resolve(self._pipeline.current_exercise or "")
                 current_name = current_entry.display_name if current_entry else self._pipeline.current_exercise
-                speak(f"Switching from {current_name} to {name}.")
+                self._say(f"Switching from {current_name} to {name}.")
             else:
-                speak(f"Starting {name}. Get into position.")
+                self._say(f"Starting {name}. Get into position.")
             try:
                 ok = self._pipeline.start(matched)
                 if not ok:
-                    speak(f"Sorry, I don't recognise {matched} as an exercise.")
+                    self._say(f"Sorry, I don't recognise {matched} as an exercise.")
             except FileNotFoundError:
-                speak(
+                self._say(
                     f"Checkpoint for {name} not found. "
                     "Please train the model first."
                 )
             return
 
         # ── Shutdown command ──
-        if words & _SHUTDOWN_WORDS:
+        if words & _SHUTDOWN_WORDS:            
             self._shutdown()
             return
 
         # ── Unknown ──
         exercises = ", ".join(known_exercises())
-        speak(
+        self._say(
             f"I didn't understand that. "
             f"Try: start overhead press, start squat, stop, or status. "
             f"Available exercises are: {exercises}."

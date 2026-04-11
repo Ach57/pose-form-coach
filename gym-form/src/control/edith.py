@@ -26,6 +26,8 @@ Usage
 from __future__ import annotations
 
 import re
+import sys
+import threading
 import time
 
 from src.control.model_registry import known_exercises, resolve
@@ -34,9 +36,10 @@ from src.interfaces.voice_input import listen_once
 from src.interfaces.voice_output import speak
 from src.interfaces.wake_word import WakeWordDetector
 
-_STOP_WORDS  = {"stop", "done", "finish", "quit", "end", "pause", "halt"}
-_START_WORDS = {"start", "begin", "do", "run", "launch", "switch", "change", "load"}
-_STATUS_WORDS = {"status", "what", "which", "current", "running"}
+_STOP_WORDS     = {"stop", "done", "finish", "quit", "end", "pause", "halt"}
+_START_WORDS    = {"start", "begin", "do", "run", "launch", "switch", "change", "load"}
+_STATUS_WORDS   = {"status", "what", "which", "current", "running"}
+_SHUTDOWN_WORDS = {"shutdown", "exit", "terminate", "goodbye", "bye", "close", "kill"}
 
 
 class Edith:
@@ -62,6 +65,7 @@ class Edith:
             wake_phrase=wake_phrase,
         )
         self._listening_for_command = False
+        self._shutdown_event = threading.Event()
 
     # ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -73,7 +77,7 @@ class Edith:
         speak(f"Edith is online. Say my name to give a command. Available exercises: {exercises}.")
         self._detector.start()
         try:
-            while True:
+            while not self._shutdown_event.is_set():
                 # cv2.imshow MUST run on the main thread (macOS AppKit requirement).
                 # The pipeline pushes annotated frames via a queue; we display them here.
                 frame = self._pipeline.get_frame()
@@ -87,12 +91,22 @@ class Edith:
                     # No active pipeline — yield so the voice thread stays responsive
                     time.sleep(0.02)
         except KeyboardInterrupt:
-            self._shutdown()
+            pass
+        finally:
+            self._do_shutdown()
 
     def _shutdown(self) -> None:
-        self._detector.stop()
+        """Signal the main thread to shut down (safe to call from any thread)."""
+        self._shutdown_event.set()
+
+    def _do_shutdown(self) -> None:
+        """Actual cleanup — always runs on the main thread."""
+        import cv2
         self._pipeline.stop()
-        speak("Edith shutting down. Good workout.")
+        cv2.destroyAllWindows()
+        speak("Shutting down. Good workout.")
+        self._detector.stop()
+        sys.exit(0)
 
     # ── Wake word callback ─────────────────────────────────────────────────────
 
@@ -159,6 +173,11 @@ class Edith:
                     f"Checkpoint for {name} not found. "
                     "Please train the model first."
                 )
+            return
+
+        # ── Shutdown command ──
+        if words & _SHUTDOWN_WORDS:
+            self._shutdown()
             return
 
         # ── Unknown ──

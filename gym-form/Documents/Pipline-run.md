@@ -28,3 +28,15 @@ python scripts/squat_infer_live.py \
   --threshold 0.5 \
   --camera 0
 ```
+
+Main thread Background thread (daemon)
+──────────────── ──────────────────────────
+WakeWordDetector running ←─ always listening for "Edith"
+│
+└─ "Edith" heard
+│
+└─ listen_once() pipeline thread: camera loop running
+│ reading frames, running model,
+└─ "stop" drawing overlay
+│
+└─ stop_event.set() ──→ pipeline thread exits cleanly

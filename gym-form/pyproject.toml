@@ -39,6 +39,13 @@ export = [
 tracking = [
     "tensorboard>=2.13",
 ]
+voice = [
+    "SpeechRecognition>=3.10",
+    "pyaudio>=0.2.14",
+    "pyttsx3>=2.90",
+    # Optional: offline wake word (requires free Picovoice AccessKey)
+    # "pvporcupine>=3.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

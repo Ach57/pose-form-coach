@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import queue
 import sys
+import threading
 
 import cv2
 import numpy as np
@@ -130,6 +132,7 @@ def run(
     width: int = 1280,
     height: int = 720,
     window_title: str = "Form Detector",
+    stop_event: threading.Event | None = None,
 ) -> None:
     """Generic camera loop that works with any BasePredictor subclass.
 
@@ -145,6 +148,9 @@ def run(
         Capture resolution.
     window_title : str
         Title of the ``cv2.imshow`` window.
+    stop_event : threading.Event | None
+        When set, the loop exits cleanly.  Used by PipelineManager to stop
+        the background thread from Edith's voice loop.
     """
     cap = cv2.VideoCapture(camera)
     if not cap.isOpened():
@@ -174,9 +180,64 @@ def run(
             key = cv2.waitKey(1) & 0xFF
             if key in (ord("q"), 27):   # q or Esc
                 break
+            if stop_event is not None and stop_event.is_set():
+                break
 
     cap.release()
     cv2.destroyAllWindows()
+
+
+def capture_and_infer(
+    predictor,
+    frame_queue: "queue.Queue[np.ndarray]",
+    camera: int = 0,
+    threshold: float = 0.5,
+    width: int = 1280,
+    height: int = 720,
+    stop_event: threading.Event | None = None,
+) -> None:
+    """Background-thread version of the camera loop.
+
+    Unlike ``run()``, this function never calls ``cv2.imshow``.
+    Instead it pushes every annotated frame into *frame_queue* so the
+    **main thread** can display it.  This is required on macOS where
+    AppKit forbids GUI calls off the main thread.
+
+    Used by :class:`~src.control.pipeline_manager.PipelineManager`.
+    """
+    cap = cv2.VideoCapture(camera)
+    if not cap.isOpened():
+        print(f"[ERROR] Cannot open camera index {camera}", file=sys.stderr)
+        return
+
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+
+    with predictor:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                continue
+
+            probs = predictor.predict(frame)
+            if predictor._lm_buffer:
+                draw_skeleton(frame, predictor._lm_buffer[-1], vis_thr=0.3)
+            _draw_overlay(frame, probs, predictor.is_warm, threshold, predictor.labels)
+
+            # Drop oldest frame if the main thread is falling behind
+            try:
+                frame_queue.put_nowait(frame)
+            except queue.Full:
+                try:
+                    frame_queue.get_nowait()
+                except queue.Empty:
+                    pass
+                frame_queue.put_nowait(frame)
+
+            if stop_event is not None and stop_event.is_set():
+                break
+
+    cap.release()
 
 
 # ── Shared CLI parser ──────────────────────────────────────────────────────────

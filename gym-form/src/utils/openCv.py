@@ -26,6 +26,7 @@ _BAR_W      = 220   # width of probability bar
 _BAR_H      = 22
 _PADDING    = 12
 _ROW_H      = 36
+_PANEL_Y = 100
 
 def _draw_overlay(
     frame: np.ndarray,
@@ -42,10 +43,10 @@ def _draw_overlay(
 
     # Semi-transparent dark background
     overlay = frame.copy()
-    cv2.rectangle(overlay, (0, 0), (panel_w, panel_h), _BLACK, -1)
+    cv2.rectangle(overlay, (0, 0), (panel_w, _PANEL_Y+ panel_h), _BLACK, -1)
     cv2.addWeighted(overlay, 0.55, frame, 0.45, 0, frame)
 
-    y = _PADDING
+    y = _PADDING + _PANEL_Y
 
     # ── Header ──
     if not is_warm:

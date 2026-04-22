@@ -1,86 +1,39 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 
 /**
  * useVoice
- * Real microphone input via Web Speech API (SpeechRecognition).
- * Falls back gracefully if the browser doesn't support it.
  *
- * simulateVoice(cmd) — types out a command char-by-char and dispatches it.
- * Used by the simulation buttons in BottomPanel.
+ * The backend owns the entire voice loop (wake word via SpeechRecognition +
+ * TTS via edge-tts). It pushes `wake_state` WebSocket events that drive
+ * wakeState in the parent (App.jsx).
  *
- * startListening() — activates the real microphone for one utterance.
+ * This hook only handles the quick-command button simulation:
+ *   simulateVoice(cmd) — typewriter effect then fires onCommand(cmd).
+ *
+ * Props:
+ *   onCommand(text) — sends the command string to the WebSocket
+ *   wakeState       — "idle" | "awake" | "listening" from the parent
  */
-export function useVoice(onCommand) {
-  const [listening,  setListening]  = useState(false);
+export function useVoice(onCommand, wakeState = "idle") {
   const [transcript, setTranscript] = useState("");
-  const recognizerRef = useRef(null);
 
-  // ── Real mic (Web Speech API) ─────────────────────────────────────────────
-  const startListening = useCallback(() => {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      console.warn("[EDITH] SpeechRecognition not supported in this browser");
-      return;
-    }
-
-    if (listening) return;
-
-    const recognizer = new SpeechRecognition();
-    recognizer.lang = "en-US";
-    recognizer.interimResults = true;
-    recognizer.maxAlternatives = 1;
-    recognizerRef.current = recognizer;
-
-    recognizer.onstart = () => setListening(true);
-
-    recognizer.onresult = (e) => {
-      const result = e.results[e.results.length - 1];
-      const text   = result[0].transcript;
-      setTranscript(text);
-      if (result.isFinal) {
-        setListening(false);
-        onCommand(text.trim());
-        setTimeout(() => setTranscript(""), 1500);
-      }
-    };
-
-    recognizer.onerror = (e) => {
-      console.error("[EDITH] SpeechRecognition error:", e.error);
-      setListening(false);
-    };
-
-    recognizer.onend = () => setListening(false);
-
-    recognizer.start();
-  }, [listening, onCommand]);
-
-  const stopListening = useCallback(() => {
-    recognizerRef.current?.stop();
-    setListening(false);
-  }, []);
-
-  // ── Simulation (button press) ─────────────────────────────────────────────
+  // ── Button simulation ─────────────────────────────────────────────────────
   const simulateVoice = useCallback(
     (cmd) => {
-      setListening(true);
+      if (wakeState !== "idle") return; // don't clobber live voice
       setTranscript("");
 
       cmd.split("").forEach((_, i) => {
         setTimeout(() => setTranscript(cmd.slice(0, i + 1)), i * 40);
       });
 
-      setTimeout(
-        () => {
-          setListening(false);
-          onCommand(cmd);
-          setTimeout(() => setTranscript(""), 1500);
-        },
-        cmd.length * 40 + 400,
-      );
+      setTimeout(() => {
+        onCommand(cmd);
+        setTimeout(() => setTranscript(""), 1500);
+      }, cmd.length * 40 + 400);
     },
-    [onCommand],
+    [wakeState, onCommand],
   );
 
-  return { listening, transcript, startListening, stopListening, simulateVoice };
+  return { transcript, simulateVoice };
 }

@@ -28,3 +28,9 @@ class FrameEvent(BaseModel):
     """Sent to frontend with a base64-encoded annotated JPEG frame."""
     event: Literal["frame"] = "frame"
     data: str  # base64 JPEG
+
+class WakeEvent(BaseModel):
+    """Sent to frontend to reflect the backend voice-loop wake state."""
+    event: Literal["wake_state"] = "wake_state"
+    state: Literal["idle", "awake", "listening"]  # mirrors useVoice wakeState
+    transcript: Optional[str] = None              # live partial transcript

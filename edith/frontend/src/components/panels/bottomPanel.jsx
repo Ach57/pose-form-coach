@@ -1,29 +1,32 @@
 import { VoiceWave } from "../ui/effects";
 import { COMMANDS } from "../../constants";
 
+const WAKE_LABELS = {
+  idle:      "EDITH STANDBY — Say \"Edith\"",
+  awake:     "EDITH AWAKE — Yes?",
+  listening: "EDITH LISTENING — Speak your command...",
+};
+
 /**
  * BottomPanel
- * Voice visualizer, live transcript, mic button, and quick command buttons.
+ * Voice visualizer with two-phase wake word state:
+ *   idle      → dim, shows "Say 'Edith'"
+ *   awake     → pulse, shows "Yes?"
+ *   listening → active wave, shows "Speak your command..."
+ *
+ * Quick command buttons simulate the same flow without mic.
  */
-export function BottomPanel({ listening, transcript, onCommand, onMicClick }) {
+export function BottomPanel({ wakeState = "idle", listening, transcript, onCommand }) {
+  const label = WAKE_LABELS[wakeState] ?? WAKE_LABELS.idle;
+
   return (
     <div className="bottom-panel">
       <div className="voice-section">
-        <div className="voice-label">VOICE INPUT · EDITH LISTENING</div>
+        <div className={`voice-label wake-label--${wakeState}`}>{label}</div>
         <VoiceWave listening={listening} />
         <div className="transcript-display">
-          {transcript || (listening ? "..." : "")}
+          {transcript || (wakeState === "listening" ? "..." : "")}
         </div>
-        {onMicClick && (
-          <button
-            className={`cmd-btn mic-btn${listening ? " mic-btn--active" : ""}`}
-            onClick={listening ? undefined : onMicClick}
-            disabled={listening}
-            title="Speak a command"
-          >
-            {listening ? "● LISTENING" : "🎤 SPEAK"}
-          </button>
-        )}
       </div>
 
       <div className="cmd-section">

@@ -26,6 +26,8 @@ def speak(text: str) -> None:
     print(f"[Edith] {text}")
     asyncio.run(_speak_async(text))
 
+async def speak_async(text: str) -> None:
+    await _speak_async(text)
 
 
 # def speak(text: str) -> None:

@@ -42,7 +42,6 @@ _START_WORDS    = {"start", "begin", "do", "run", "launch", "switch", "change", 
 _STATUS_WORDS   = {"status", "what", "which", "current", "running"}
 _SHUTDOWN_WORDS = {"shutdown", "exit", "terminate", "goodbye", "bye", "close", "kill"}
 
-
 class Edith:
     """Voice-controlled controller for gym form analysis.
 
@@ -79,8 +78,9 @@ class Edith:
 
         exercises = ", ".join(known_exercises())
         # First speak is on main thread directly — safe
-        speak(f"Edith is online. Say my name to give a command. Available exercises: {exercises}.")
+        speak(f"Edith is online. Call my name. Available exercises: {exercises}.")
         self._detector.start()
+        active_window: str = ""
         try:
             while not self._shutdown_event.is_set():
                 # ── Drain speech queue (main-thread TTS) ──
@@ -93,13 +93,25 @@ class Edith:
 
                 # ── Display frames (main-thread imshow) ──
                 frame = self._pipeline.get_frame()
+                current_title = self._pipeline.window_title
+
                 if frame is not None:
-                    cv2.imshow(self._pipeline.window_title, frame)
+                    # Window title changed (exercise switched) — destroy old window first
+                    if current_title != active_window:
+                        if active_window:
+                            cv2.destroyWindow(active_window)
+                        active_window = current_title
+                    cv2.imshow(current_title, frame)
                     key = cv2.waitKey(1) & 0xFF
                     if key in (ord("q"), 27):
                         self._pipeline.stop()
                         cv2.destroyAllWindows()
+                        active_window = ""
                 else:
+                    # Pipeline stopped — clean up its window if still open
+                    if active_window and not self._pipeline.is_running:
+                        cv2.destroyAllWindows()
+                        active_window = ""
                     time.sleep(0.01)
         except KeyboardInterrupt:
             pass
@@ -168,13 +180,17 @@ class Edith:
                 self._say(f"Stopped {name}. Great work.")
             else:
                 self._say("Nothing is running.")
-            return
-
+            return    
+        
         # ── Start / switch command ──
         matched = self._match_exercise(text)
         if matched:
             entry = resolve(matched)
             name = entry.display_name if entry else matched
+            # Already running the same exercise — nothing to do
+            if self._pipeline.is_running and self._pipeline.current_exercise == matched:
+                self._say(f"We're already doing {name}.")
+                return
             if self._pipeline.is_running:
                 current_entry = resolve(self._pipeline.current_exercise or "")
                 current_name = current_entry.display_name if current_entry else self._pipeline.current_exercise

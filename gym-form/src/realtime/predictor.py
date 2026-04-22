@@ -203,7 +203,7 @@ class OHPPredictor(BasePredictor):
 class SquatPredictor(BasePredictor):
     """Per-frame Squat form error predictor."""
 
-    labels = ["error_knees_forward", "error_knees_inward"]
+    labels = ["knees_forward", "knees_inward"]
 
     # ── Factory ──────────────────────────────────────────────────────
 

@@ -14,7 +14,6 @@ from __future__ import annotations
 import subprocess
 import asyncio
 import edge_tts
-import sys
 
 
 async def _speak_async(text: str, voice: str = "en-US-JennyNeural") -> None:

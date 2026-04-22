@@ -16,8 +16,6 @@ from __future__ import annotations
 import queue
 import threading
 from pathlib import Path
-
-import cv2
 import numpy as np
 
 from src.control.model_registry import resolve
@@ -146,14 +144,18 @@ class PipelineManager:
         return True
 
     def stop(self) -> None:
-        """Gracefully stop the active pipeline and wait for the thread to exit."""
+        """Gracefully stop the active pipeline and wait for the thread to exit.
+
+        Does NOT call cv2.destroyAllWindows() — the caller (main thread) is
+        responsible for that to comply with macOS AppKit requirements.
+        """
         if not self.is_running:
             return
         self._stop_event.set()
-        cv2.destroyAllWindows()
         if self._thread is not None:
             self._thread.join(timeout=5)
         self._current_exercise = None
+        self._window_title = ""
 
     # ── Internal ───────────────────────────────────────────────────────────────
 

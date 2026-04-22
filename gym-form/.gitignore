@@ -1,0 +1,42 @@
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data (large files — use DVC or symlinks)
+data/raw_videos/*.mp4
+data/poses/*.npz
+data/poses/*.parquet
+
+# Artifacts (model checkpoints are large)
+artifacts/checkpoints/*.ckpt
+artifacts/checkpoints/*.pt
+artifacts/checkpoints/*.onnx
+deploy/onnx/*.onnx
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+
+Fitness-AQA_dataset_release/
+
+checkpoints/

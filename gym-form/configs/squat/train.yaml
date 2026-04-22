@@ -1,0 +1,7 @@
+# ── Squat training overrides (merged on top of configs/shared/train.base.yaml) ──
+
+train:
+  # Per-label pos_weight for BCEWithLogitsLoss.
+  # Computed by: python scripts/audit_data.py --config configs/squat/dataset.yaml
+  # Placeholder — replace after running audit_data.py on the squat dataset.
+  pos_weight: [1.0, 1.0] # error_knees_forward, error_knees_inward — PLACEHOLDER

@@ -1,0 +1,18 @@
+# ── Shared model architecture — Causal TCN ──
+# Exercise-specific configs (configs/ohp/model.yaml, configs/squat/model.yaml)
+# override in_features (and n_labels if it ever differs). Everything here is inherited.
+
+model:
+  type: causal_tcn
+
+  # in_features is intentionally absent here — must be set per exercise.
+  # n_labels is intentionally absent here — must be set per exercise.
+
+  # TCN backbone
+  channels: [64, 64, 64]
+  kernel_size: 3
+  dilations: [1, 2, 4]
+  dropout: 0.1
+
+  # Receptive field = 1 + 2 * sum(d * (k-1) for each block)
+  # With dilations=[1,2,4] and kernel=3: RF = 1 + 2*(2+4+8) = 29 frames (~1s at 30fps)

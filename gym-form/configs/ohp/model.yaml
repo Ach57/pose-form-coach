@@ -1,0 +1,5 @@
+# ── OHP model overrides (merged on top of configs/shared/model.tcn.base.yaml) ──
+
+model:
+  in_features: 16 # 8 static + 7 velocities + 1 scale (see configs/ohp/features.yaml)
+  n_labels: 2 # ohp_elbow, ohp_knee

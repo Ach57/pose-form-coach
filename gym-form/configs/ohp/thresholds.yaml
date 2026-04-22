@@ -1,0 +1,16 @@
+# ── Per-label inference thresholds for OHP ──
+# Calibrated on the validation set (scripts/calibrate_thresholds.py).
+# Values below are sensible defaults; replace after calibration.
+
+thresholds:
+  ohp_elbow:
+    on: 0.60 # activate error flag when prob >= on
+    off: 0.40 # deactivate when prob <= off (hysteresis)
+    min_dur_ms: 100 # suppress segments shorter than this
+    bridge_gap_ms: 150 # merge segments separated by less than this
+
+  ohp_knee:
+    on: 0.55
+    off: 0.35
+    min_dur_ms: 100
+    bridge_gap_ms: 150

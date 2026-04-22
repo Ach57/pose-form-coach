@@ -1,0 +1,90 @@
+# ── Feature enumeration — Squat ──
+# Canonical list of features extracted per frame by SquatFeatureExtractor.
+# Update model.tcn.yaml:in_features when this list changes.
+
+exercise: Squat
+
+# Landmark reference:
+#   MediaPipe Pose provides 33 landmarks.
+#   Subset used: shoulders (11,12), hips (23,24), knees (25,26), ankles (27,28).
+
+features:
+  # --- Joint angles (radians) ---
+  - name: knee_angle_L
+    landmarks: [hip_L, knee_L, ankle_L]
+    type: angle
+    relevance: both errors
+
+  - name: knee_angle_R
+    landmarks: [hip_R, knee_R, ankle_R]
+    type: angle
+    relevance: both errors
+
+  - name: hip_angle_L
+    landmarks: [shoulder_L, hip_L, knee_L]
+    type: angle
+    relevance: squat depth / trunk lean
+
+  - name: hip_angle_R
+    landmarks: [shoulder_R, hip_R, knee_R]
+    type: angle
+    relevance: squat depth / trunk lean
+
+  - name: trunk_inclination
+    landmarks: [mid_shoulder, mid_hip]
+    type: angle_to_vertical
+    relevance: forward lean
+
+  # --- Lateral positions (normalized x-coords) ---
+  - name: knee_x_L
+    landmarks: [knee_L]
+    type: position_x
+    relevance: knees_forward / knees_inward
+
+  - name: knee_x_R
+    landmarks: [knee_R]
+    type: position_x
+    relevance: knees_forward / knees_inward
+
+  - name: ankle_x_L
+    landmarks: [ankle_L]
+    type: position_x
+    relevance: reference for knee-over-toe ratio
+
+  - name: ankle_x_R
+    landmarks: [ankle_R]
+    type: position_x
+    relevance: reference for knee-over-toe ratio
+
+  # --- Vertical depth ---
+  - name: hip_center_y
+    landmarks: [hip_L, hip_R]
+    type: position_y
+    relevance: squat depth reference (no velocity)
+
+  # --- Velocities (d/dt of cols 0-8, excluding hip_center_y) ---
+  - name: d_knee_angle_L
+    type: velocity
+  - name: d_knee_angle_R
+    type: velocity
+  - name: d_hip_angle_L
+    type: velocity
+  - name: d_hip_angle_R
+    type: velocity
+  - name: d_trunk_inclination
+    type: velocity
+  - name: d_knee_x_L
+    type: velocity
+  - name: d_knee_x_R
+    type: velocity
+  - name: d_ankle_x_L
+    type: velocity
+  - name: d_ankle_x_R
+    type: velocity
+
+  # --- Scale reference ---
+  - name: shoulder_width
+    type: scale
+
+# Total: 20 features (10 static + 9 velocities + 1 scale)
+n_features: 20

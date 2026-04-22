@@ -1,0 +1,20 @@
+# Required python dependencies for the backend
+
+#Pydantic is the most popular Python library for data validation and settings management,
+#using type hints to enforce data structure at runtime.
+pydantic
+
+#FastAPI is a web framework for building HTTP-based service APIs in Python 3.8+
+fastapi
+
+# ASGI server required to run FastAPI
+uvicorn[standard]
+
+# WebSocket support
+websockets
+
+# Computer vision (frame encoding for streaming)
+opencv-python
+
+# Numerical operations
+numpy

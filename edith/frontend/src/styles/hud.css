@@ -1,0 +1,547 @@
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap");
+
+/* ─── Reset & Base ────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #010a12;
+  font-family: "Share Tech Mono", monospace;
+  color: #00f0ff;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* ─── Root ────────────────────────────────────────────────────────────────── */
+.hud-root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 50%, #001825 0%, #010a12 70%);
+}
+
+/* ─── Background layers ───────────────────────────────────────────────────── */
+.hex-grid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.noise {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0.4;
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 50%,
+    #010a1288 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─── Layout Grid ─────────────────────────────────────────────────────────── */
+.hud-layout {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 280px 1fr 280px;
+  grid-template-rows: 60px 1fr 120px;
+  height: 100vh;
+  gap: 12px;
+  padding: 16px;
+}
+
+/* ─── Header ──────────────────────────────────────────────────────────────── */
+.hud-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #00f0ff22;
+  padding-bottom: 10px;
+}
+
+.edith-title {
+  font-family: "Orbitron", sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 12px;
+  transition:
+    color 0.6s,
+    text-shadow 0.6s;
+}
+
+.header-sub {
+  font-size: 10px;
+  letter-spacing: 4px;
+  opacity: 0.5;
+  text-transform: uppercase;
+}
+
+.sys-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 3px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: blink 2s infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* ─── Panels ──────────────────────────────────────────────────────────────── */
+.panel {
+  background: rgba(0, 15, 30, 0.7);
+  border: 1px solid #00f0ff22;
+  backdrop-filter: blur(8px);
+  position: relative;
+  overflow: hidden;
+}
+
+.panel-title {
+  font-family: "Orbitron", sans-serif;
+  font-size: 10px;
+  letter-spacing: 3px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #00f0ff18;
+  opacity: 0.7;
+}
+
+/* ─── Left Panel ──────────────────────────────────────────────────────────── */
+.left-panel {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.model-card {
+  position: relative;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border-bottom: 1px solid #00f0ff11;
+  overflow: hidden;
+}
+
+.model-card:hover {
+  background: rgba(0, 240, 255, 0.05);
+}
+.model-card.active {
+  background: rgba(0, 240, 255, 0.08);
+}
+
+.model-card .corner-bracket {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--model-color) !important;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.model-card:hover .corner-bracket,
+.model-card.active .corner-bracket {
+  opacity: 1;
+}
+
+.model-id {
+  font-family: "Orbitron", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--model-color);
+  letter-spacing: 3px;
+}
+.model-label {
+  font-size: 11px;
+  opacity: 0.6;
+  margin: 4px 0;
+  letter-spacing: 1px;
+}
+.model-status {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--model-color);
+  opacity: 0.8;
+}
+.model-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.system-integrity {
+  padding: 14px 16px;
+  border-top: 1px solid #00f0ff11;
+  margin-top: auto;
+}
+.integrity-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  opacity: 0.4;
+  margin-bottom: 8px;
+}
+
+/* ─── Center Panel ────────────────────────────────────────────────────────── */
+.center-panel {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.pulse-container {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pulse-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid;
+  animation: pulseExpand 2s ease-out infinite;
+}
+
+@keyframes pulseExpand {
+  0% {
+    width: 50px;
+    height: 50px;
+    opacity: 1;
+  }
+  100% {
+    width: 160px;
+    height: 160px;
+    opacity: 0;
+  }
+}
+
+.core-orb {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  transition: all 0.6s;
+  position: relative;
+  z-index: 1;
+}
+
+.model-name-display {
+  font-family: "Orbitron", sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  margin-top: 24px;
+  text-align: center;
+  transition: color 0.6s;
+}
+
+.model-sublabel {
+  font-size: 11px;
+  letter-spacing: 4px;
+  opacity: 0.5;
+  margin-top: 6px;
+  text-align: center;
+}
+
+.boot-bar-container {
+  width: 220px;
+  margin-top: 24px;
+}
+.boot-bar-track {
+  height: 3px;
+  background: #001825;
+  border: 1px solid #00f0ff22;
+  overflow: hidden;
+}
+.boot-bar-fill {
+  height: 100%;
+  transition: width 0.4s ease;
+  background: linear-gradient(90deg, #00f0ff88, #00f0ff);
+}
+.boot-pct {
+  font-size: 10px;
+  letter-spacing: 2px;
+  opacity: 0.6;
+  text-align: right;
+  margin-top: 4px;
+}
+
+.live-stats {
+  margin-top: 28px;
+  width: 80%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ─── Right Panel ─────────────────────────────────────────────────────────── */
+.right-panel {
+  grid-column: 3;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-section {
+  padding: 12px 14px;
+  border-bottom: 1px solid #00f0ff11;
+}
+.telemetry-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  opacity: 0.4;
+  margin-bottom: 8px;
+}
+.telemetry-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.telemetry-key {
+  font-size: 8px;
+  letter-spacing: 2px;
+  opacity: 0.4;
+}
+.telemetry-val {
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.log-section {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.log-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 14px;
+}
+.log-scroll::-webkit-scrollbar {
+  width: 3px;
+}
+.log-scroll::-webkit-scrollbar-thumb {
+  background: #00f0ff33;
+}
+
+.log-entry {
+  font-size: 10px;
+  line-height: 1.8;
+  letter-spacing: 1px;
+}
+.log-time {
+  opacity: 0.4;
+  margin-right: 8px;
+}
+
+/* ─── Stat Bar ────────────────────────────────────────────────────────────── */
+.stat-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.stat-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  opacity: 0.6;
+  width: 70px;
+  flex-shrink: 0;
+}
+.stat-track {
+  flex: 1;
+  height: 3px;
+  background: #001825;
+  overflow: hidden;
+}
+.stat-fill {
+  height: 100%;
+  transition: width 0.6s ease;
+}
+.stat-value {
+  font-size: 10px;
+  width: 32px;
+  text-align: right;
+}
+
+/* ─── Bottom Panel ────────────────────────────────────────────────────────── */
+.bottom-panel {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+}
+
+.voice-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.voice-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  opacity: 0.5;
+}
+
+.voice-wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 32px;
+}
+
+.wave-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: #00f0ff44;
+  height: 4px;
+  transition: background 0.3s;
+}
+.wave-bar.active {
+  background: #00f0ff;
+  animation: waveAnim var(--dur, 0.8s) ease-in-out infinite alternate;
+}
+
+@keyframes waveAnim {
+  from {
+    height: 4px;
+  }
+  to {
+    height: 28px;
+  }
+}
+
+.transcript-display {
+  font-family: "Orbitron", sans-serif;
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: #bb88ff;
+  min-height: 20px;
+  text-shadow: 0 0 10px #bb88ff88;
+}
+
+.cmd-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cmd-section-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  opacity: 0.4;
+}
+.cmd-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.cmd-btn {
+  background: rgba(0, 240, 255, 0.05);
+  border: 1px solid #00f0ff33;
+  color: #00f0ff;
+  font-family: "Share Tech Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.cmd-btn:hover {
+  background: rgba(0, 240, 255, 0.12);
+  border-color: #00f0ff88;
+  box-shadow: 0 0 12px #00f0ff33;
+}
+.cmd-btn:active {
+  transform: scale(0.97);
+}
+.cmd-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── Shared Atoms ────────────────────────────────────────────────────────── */
+.corner-bracket {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: #00f0ff;
+}
+
+/* ─── Scan Line ───────────────────────────────────────────────────────────── */
+.scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #00f0ff44,
+    #00f0ffaa,
+    #00f0ff44,
+    transparent
+  );
+  animation: scanMove 4s linear infinite;
+  z-index: 1;
+  pointer-events: none;
+}
+
+@keyframes scanMove {
+  0% {
+    top: -2px;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}

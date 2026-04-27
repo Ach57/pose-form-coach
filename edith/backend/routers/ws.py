@@ -28,6 +28,7 @@ from models.schemas import (
     FrameEvent,
     WakeEvent,
 )
+from constants.state import SystemState, Logstate, WakeState
 
 _GYM_FORM = Path(__file__).resolve().parents[3] / "gym-form"
 if str(_GYM_FORM) not in sys.path:
@@ -52,12 +53,12 @@ async def websocket_endpoint(websocket: WebSocket):
             StateChangeEvent(state=state, model=model).model_dump_json()
         )
 
-    async def send_log(text: str, log_type: str = "info"):
+    async def send_log(text: str, log_type: Logstate = Logstate.INFO):
         await websocket.send_text(
             LogEvent(text=text, type=log_type).model_dump_json()
         )
-                
-        if log_type != "voice":
+
+        if log_type != Logstate.VOICE:
             from src.interfaces.voice_output import speak_async
             await speak_async(text)
 
@@ -67,7 +68,7 @@ async def websocket_endpoint(websocket: WebSocket):
     async def send_frame(b64: str):
         await websocket.send_text(FrameEvent(data=b64).model_dump_json())
 
-    async def send_wake(state: str, transcript: str | None = None):
+    async def send_wake(state: WakeState, transcript: str | None = None):
         await websocket.send_text(
             WakeEvent(state=state, transcript=transcript).model_dump_json()
         )
@@ -91,7 +92,7 @@ async def websocket_endpoint(websocket: WebSocket):
             if manager.active_exercise:
                 await manager.shutdown(send_log, send_state)
             else:
-                await send_log("No exercise is running.", "warn")
+                await send_log("No exercise is running.", Logstate.WARN)
 
         elif intent.intent == "shutdown":
             await manager.shutdown(send_log, send_state)
@@ -102,24 +103,24 @@ async def websocket_endpoint(websocket: WebSocket):
                 from src.control.model_registry import resolve
                 entry = resolve(ex)
                 name  = entry.display_name if entry else ex
-                await send_log(f"Currently analysing {name}.", "info")
+                await send_log(f"Currently analysing {name}.", Logstate.INFO)
             else:
-                await send_log("No exercise is running.", "info")
+                await send_log("No exercise is running.", Logstate.INFO)
 
         else:
             exercises = ", ".join(manager.known())
             await send_log(
                 f"I didn't understand that. Try: 'start ohp', 'start squat', "
                 f"'stop', 'switch', or 'status'. Available: {exercises}",
-                "warn",
+                Logstate.WARN,
             )
 
     # ── Announce + start voice loop ───────────────────────────────────────────
 
     from src.control.model_registry import known_exercises
     exercises = ", ".join(known_exercises())
-    await send_log("EDITH is online. Available exercises: " + exercises, "success")
-    await send_state("idle")
+    await send_log("EDITH is online. Available exercises: " + exercises, Logstate.SUCCESS)
+    await send_state(SystemState.IDLE)
 
     voice_loop.start(send_wake, send_log, dispatch_command)
 
@@ -133,11 +134,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 data = json.loads(raw)
                 msg  = CommandMessage(**data)
             except Exception:
-                await send_log(f"Unrecognised message: {raw}", "error")
+                await send_log(f"Unrecognised message: {raw}", Logstate.ERROR)
                 continue
 
             text = msg.command.strip()
-            await send_log(f'\u25b6 "{text}"', "voice")
+            await send_log(f'\u25b6 "{text}"', Logstate.VOICE)
             await dispatch_command(text)
 
     except WebSocketDisconnect:

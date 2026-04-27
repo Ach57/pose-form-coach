@@ -11,6 +11,3 @@ cd edith/frontend
 npm run dev
 
 ```
-
-//Achraf:
-TODO: add documentation

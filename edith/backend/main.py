@@ -7,7 +7,7 @@ Run with:
     uvicorn main:app --reload --port 8000
 """
 
-from constants.global_constants import FAST_API_TITLE, ALLOWED_ORIGINS
+from config.config import FAST_API_TITLE, ALLOWED_ORIGINS
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

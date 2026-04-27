@@ -1,0 +1,12 @@
+#constants/constants.py 
+'''Contains all the constants used through out the pipelines.'''
+FAST_API_TITLE_ENV = "FAST_API_TITLE"
+ALLOWED_ORIGINS_ENV = "ALLOWED_ORIGINS"
+
+STOP_WORDS_ENV = "STOP_WORDS"
+START_WORDS_ENV = "START_WORDS"
+STATUS_WORDS_ENV = "STATUS_WORDS"
+SHUTDOWN_WORDS_ENV = "SHUTDOWN_WORDS"
+
+SEPARATOR = ','
+

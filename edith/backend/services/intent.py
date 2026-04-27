@@ -10,6 +10,8 @@ duplicating any parsing logic.
 
 from __future__ import annotations
 
+from config.config import START_WORDS, STOP_WORDS, STATUS_WORDS, STATUS_WORDS, SHUTDOWN_WORDS
+
 import re
 import sys
 from dataclasses import dataclass
@@ -22,12 +24,6 @@ if str(_GYM_FORM) not in sys.path:
     sys.path.insert(0, str(_GYM_FORM))
 
 from src.control.model_registry import known_exercises, resolve  # noqa: E402
-
-# ── Intent word sets (mirrors edith.py) ───────────────────────────────────────
-_STOP_WORDS     = {"stop", "done", "finish", "quit", "end", "pause", "halt"}
-_START_WORDS    = {"start", "begin", "do", "run", "launch", "switch", "change", "load"}
-_STATUS_WORDS   = {"status", "what", "which", "current", "running"}
-_SHUTDOWN_WORDS = {"shutdown", "exit", "terminate", "goodbye", "bye", "close", "kill"}
 
 Intent = Literal["start", "stop", "switch", "status", "shutdown", "unknown"]
 
@@ -45,16 +41,16 @@ def parse(text: str) -> IntentResult:
     """
     words = set(re.sub(r"[^\w\s]", "", text.lower()).split())
 
-    if words & _SHUTDOWN_WORDS:
+    if words & SHUTDOWN_WORDS:
         return IntentResult(intent="shutdown")
 
-    if words & _STATUS_WORDS:
+    if words & STATUS_WORDS:
         return IntentResult(intent="status")
 
-    if (words & _STOP_WORDS) and not (words & _START_WORDS):
+    if (words & STOP_WORDS) and not (words & START_WORDS):
         return IntentResult(intent="stop")
 
-    if words & _START_WORDS:
+    if words & START_WORDS:
         exercise = _match_exercise(text)
         if exercise:
             return IntentResult(intent="start", exercise=exercise)

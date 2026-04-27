@@ -1,6 +1,4 @@
-# E.D.I.T.H 🤖
-
-> **E**xercise **D**iagnostic and **I**nference **T**raining **H**ub  
+# E.D.I.T.H 🤖  
 > A real-time AI gym-form coach with a voice-first interface.
 
 ![Python](https://img.shields.io/badge/Python-3.14-blue?logo=python&logoColor=white)

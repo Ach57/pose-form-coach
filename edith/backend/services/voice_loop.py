@@ -30,6 +30,9 @@ if str(_GYM_FORM) not in sys.path:
 from src.interfaces.voice_input  import listen_once
 from src.interfaces.voice_output import speak_async
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # edith/backend
+from constants.state import WakeState, Logstate
+
 log = logging.getLogger(__name__)
 
 WAKE_PHRASE = "edith"
@@ -84,8 +87,8 @@ class VoiceLoop:
                 continue
 
             # ── Wake word detected ─────────────────────────────────────────
-            await send_wake("awake", "Yes?")
-            await send_log("Yes?", "voice")
+            await send_wake(WakeState.AWAKE, "Yes?")
+            await send_log("Yes?", Logstate.VOICE)
 
             # Speak "Yes?" directly (it's an async coroutine)
             try:
@@ -94,17 +97,17 @@ class VoiceLoop:
                 log.warning("[VoiceLoop] TTS error: %s", exc)
 
             # ── Phase 2: capture command ───────────────────────────────────
-            await send_wake("listening")
+            await send_wake(WakeState.LISTENING)
 
             try:
                 command: str = await loop.run_in_executor(None, listen_once)
             except Exception as exc:
                 log.warning("[VoiceLoop] command listen error: %s", exc)
-                await send_wake("idle")
+                await send_wake(WakeState.IDLE)
                 continue
 
-            await send_wake("idle")
+            await send_wake(WakeState.IDLE)
 
             if command:
-                await send_log(f'\u25b6 "{command}"', "voice")
+                await send_log(f'\u25b6 "{command}"', Logstate.VOICE)
                 await dispatch_command(command)

@@ -1,5 +1,6 @@
 from pydantic import BaseModel
-from typing import Literal, Optional
+from typing import Optional
+from constants.state import *
 
 class CommandMessage(BaseModel):
     """Incoming natural-language command from the frontend (mirrors edith.py)."""
@@ -7,30 +8,30 @@ class CommandMessage(BaseModel):
 
 class StateChangeEvent(BaseModel):
     """Sent to frontend when system state changes."""
-    event: Literal["state_change"] = "state_change"
-    state: Literal["idle", "booting", "active", "shutdown"]
+    event: EventType = EventType.STATE_CHANGE
+    state: SystemState
     model: Optional[str] = None  # registry key e.g. "ohp", "squat"
 
 class StatsEvent(BaseModel):
     """Sent to frontend periodically while a model is active."""
-    event: Literal["stats"] = "stats"
+    event: ModelStatsEvent = ModelStatsEvent.STATS
     confidence: int
     fps:        int
     latency:    int
 
 class LogEvent(BaseModel):
     """Sent to frontend to append an entry to the HUD event log."""
-    event: Literal["log"] = "log"
+    event: LogEventType = LogEventType.LOG
     text: str
-    type: Literal["info", "warn", "error", "success", "voice"] = "info"
+    type: Logstate = Logstate.INFO
 
 class FrameEvent(BaseModel):
     """Sent to frontend with a base64-encoded annotated JPEG frame."""
-    event: Literal["frame"] = "frame"
+    event: FrameEventType = FrameEventType.FRAME
     data: str  # base64 JPEG
 
 class WakeEvent(BaseModel):
     """Sent to frontend to reflect the backend voice-loop wake state."""
-    event: Literal["wake_state"] = "wake_state"
-    state: Literal["idle", "awake", "listening"]  # mirrors useVoice wakeState
+    event: WakeType = WakeType.WAKE_STATE
+    state: WakeState  # mirrors useVoice wakeState
     transcript: Optional[str] = None              # live partial transcript

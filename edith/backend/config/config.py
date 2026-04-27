@@ -5,6 +5,7 @@ import os
 from typing import Callable, Iterable
 
 from constants.constants import *
+from constants.text import SEPARATOR
 
 load_dotenv()
 
@@ -29,4 +30,4 @@ STOP_WORDS = _get_collection_env(STOP_WORDS_ENV, set)
 START_WORDS = _get_collection_env(START_WORDS_ENV, set)
 STATUS_WORDS = _get_collection_env(STATUS_WORDS_ENV, set)
 SHUTDOWN_WORDS = _get_collection_env(SHUTDOWN_WORDS_ENV, set)
-
+SWITCH_WORDS = _get_collection_env(SWITCH_WORDS_ENV, set)
